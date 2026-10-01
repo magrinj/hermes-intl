@@ -59,13 +59,16 @@ the shell is compiled to Hermes bytecode with the app.
 
 ```js
 if (typeof g.HermesInternal === 'object' && g.HermesInternal !== null) {
-  const hostLocale = toBcp47(I18nManager.getConstants().localeIdentifier);
-  require('../js/bootstrap')(NativeHermesIntl.install(hostLocale), g);
+  const { I18nManager, TurboModuleRegistry } = require('react-native');
+  const native = TurboModuleRegistry.get('NativeHermesIntl');
+  const { toBcp47 } = require('./hostLocale');
+  require('../js/bootstrap')(native.install(toBcp47(I18nManager.getConstants().localeIdentifier)), g);
 }
 ```
 
 1. It runs when the bundle is evaluated, so `import 'hermes-intl'` belongs at the top of the app
-   entry. On other engines (JSC, V8) it does nothing: they already have these constructors.
+   entry. On other engines (JSC, V8) it does nothing: they already have these constructors. It is
+   plain CommonJS with every `require` inside the check, so Jest loads it without a transform.
 2. `NativeHermesIntl` is a C++ TurboModule ([spec](src/NativeHermesIntl.ts),
    [class](cpp/NativeHermesIntl.h)). A TurboModule is how a library gets the `jsi::Runtime`
    without any code in the app. Android registers it through the cxxModule fields of
