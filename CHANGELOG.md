@@ -1,8 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
-
-First release.
+## 0.1.0 (2026-10-01)
 
 - `Intl.PluralRules`, `Intl.RelativeTimeFormat`, `Intl.ListFormat` and `Intl.Locale` (with the
   Locale Info methods) on Hermes, installed only when Hermes lacks them.
