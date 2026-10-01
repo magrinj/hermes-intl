@@ -167,6 +167,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - uses: ruby/setup-ruby@v1
         with:
+          ruby-version: '3.3'
           working-directory: example
           bundler-cache: true
       - run: bun install --frozen-lockfile
