@@ -73,6 +73,7 @@ cd ../..
 
 bun run test262               # test262 for the implemented constructors
 scripts/corpus.sh             # correctness corpus; hash must match bench/corpus.hash
+host/build/hi-host host/locale-objects.js   # Hermes's own Intl functions given Intl.Locale objects
 ```
 
 A test that fails for a known reason goes in `host/test262-expected-failures.txt`, with why.

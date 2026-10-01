@@ -83,6 +83,7 @@ jobs:
           git fetch -q --depth 1 --filter=blob:none origin "$TEST262_SHA" && git checkout -q FETCH_HEAD
       - run: scripts/test262.sh
       - run: scripts/corpus.sh
+      - run: host/build/hi-host host/locale-objects.js
 
   prebuilt:
     name: Prebuilt binaries (Android + iOS)
