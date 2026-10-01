@@ -11,15 +11,16 @@
 ![npm downloads](https://img.shields.io/npm/dm/hermes-intl)
 
 Native `Intl.PluralRules`, `Intl.RelativeTimeFormat`, `Intl.ListFormat` and `Intl.Locale` for
-React Native's Hermes engine, backed by [ICU4X](https://github.com/unicode-org/icu4x). A drop-in
-replacement for the FormatJS polyfills.
+React Native's [Hermes](https://github.com/facebook/hermes) engine, backed by
+[ICU4X](https://github.com/unicode-org/icu4x). A drop-in replacement for the
+[FormatJS](https://formatjs.github.io/) polyfills.
 
 ## Why this library?
 
-- **Fast.** `PluralRules.select` and `RelativeTimeFormat.format` are 450 to 820 times faster than
+- **Fast.** `PluralRules.select` and `RelativeTimeFormat.format` are 200 to 800 times faster than
   the FormatJS polyfills.
-  Screens that format dates and counts open twice as fast, and the worst frame of a fast scroll is
-  half as long.
+  Screens that format dates and counts open about twice as fast, and the worst frame of a fast
+  scroll is half as long.
 - **Correct, and the same everywhere.** It passes test262 for these APIs (2 known failures) and gives
   byte-identical output on iOS and Android. FormatJS output depends on the platform, and its
   plurals for decimals are wrong in some languages.
@@ -44,6 +45,10 @@ Pixel 8a, release builds of the same app with hermes-intl and with FormatJS ([ex
 Measured from the outside with [Flashlight](https://github.com/bamlab/flashlight), a fast scroll
 scores **94/100 with hermes-intl and 62 with FormatJS**, which keeps the JS thread saturated for
 3.6 of the 5 seconds.
+
+The charts are from 2026-09-30. Timings move with the phone's state: a re-run the next day, with the
+phone charging and cooler, sped up both builds and FormatJS more, for 200 to 385 times per call and
+89 times on 10,000 notifications ([re-run](bench/README.md#re-run-on-2026-10-01)).
 
 Every number, the other devices, conformance and how to reproduce: [bench/README.md](bench/README.md).
 
@@ -150,6 +155,18 @@ interactions.
 ## Contributing
 
 See [CONTRIBUTING.md](.github/CONTRIBUTING.md).
+
+## Acknowledgements
+
+- [Hermes](https://github.com/facebook/hermes) and [React Native](https://reactnative.dev), by Meta
+  and the open source community. hermes-intl only adds the `Intl` constructors Hermes does not ship;
+  Hermes's own `NumberFormat`, `DateTimeFormat` and `Collator` stay in charge.
+- [ICU4X](https://github.com/unicode-org/icu4x) and the Unicode CLDR, for the algorithms and the
+  locale data.
+- [test262](https://github.com/tc39/test262), the TC39 suite the implementation is checked against.
+- [FormatJS](https://formatjs.github.io/), the polyfills used as the baseline in the benchmarks.
+
+hermes-intl is an independent project, not affiliated with or endorsed by Meta or the Hermes team.
 
 ## Support
 

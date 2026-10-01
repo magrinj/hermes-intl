@@ -100,6 +100,28 @@ The corpus ([corpus.js](corpus.js), 2,656 cases) gives `713fb2ce` with hermes-in
 as iOS and the macOS test host (`corpus.hash`, checked in CI). FormatJS gives `527cd73b` on
 Android and `a1690ca5` on iOS: its output depends on the platform.
 
+### Re-run on 2026-10-01
+
+The same phone and builds of 0.1.0 the next day, charging, thermal status 0, medians of 3
+alternated runs. Both builds ran faster than above, hermes-intl by up to 2 times and FormatJS by 2 to
+4 times, so the ratios are lower. These are the numbers in the demo video.
+
+| | hermes-intl | FormatJS | |
+| --- | --- | --- | --- |
+| PluralRules `select` (integer) | 1.32 µs | 267 µs | 202× |
+| PluralRules `select` (decimal) | 1.09 µs | 316 µs | 289× |
+| PluralRules `selectRange` | 1.45 µs | 558 µs | 385× |
+| RelativeTimeFormat `format` | 0.98 µs | 312 µs | 318× |
+| RelativeTimeFormat `formatToParts` | 3.80 µs | 312 µs | 82× |
+| ListFormat `format` (3 items) | 0.81 µs | 6.9 µs | 8.5× |
+| Locale first `new` | 95 µs | 11,973 µs | 126× |
+| Locale `maximize()` | 2.3 µs | 65 µs | 29× |
+| Open a 20-row screen, first time | 45 ms | 82 ms | 1.8× |
+| 10,000 notifications, `Intl` calls only | 75 ms | 6,665 ms | 89× |
+
+The per-call and 10,000-notification runs were screen-recorded. For the last row the display was
+forced to its peak refresh rate in both builds; at the default rate it gave 80 ms vs 6,009 ms (75×).
+
 ## Reproduce
 
 - Per call and corpus: the **Bench** button in the example app, or on the macOS host
