@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.1](https://github.com/magrinj/hermes-intl/compare/v0.1.0...v0.1.1) (2026-10-01)
+
+
+### Bug Fixes
+
+* accept Intl.Locale objects in Hermes's own Intl functions ([779da61](https://github.com/magrinj/hermes-intl/commit/779da61fb0ada72779a997788dbb4a8d0fcc2c31))
+* load the entry point in Jest without a transform ([22ec94e](https://github.com/magrinj/hermes-intl/commit/22ec94ee243649e0f7f67d873868a2fccae2cc11))
+* select plurals on the whole value in scientific and engineering notation ([ae4401a](https://github.com/magrinj/hermes-intl/commit/ae4401a8fdc774a1cf5634b9817c25fdac5c51fe))
+
 ## 0.1.0 (2026-10-01)
 
 - `Intl.PluralRules`, `Intl.RelativeTimeFormat`, `Intl.ListFormat` and `Intl.Locale` (with the
