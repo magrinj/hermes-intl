@@ -1,0 +1,3 @@
+[install]
+# release-it is the only root dependency; do not pull react-native in as a peer.
+peer = false

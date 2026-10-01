@@ -1,0 +1,23 @@
+// First import of index.formatjs.js: what apps load today to get these Intl APIs on Hermes.
+global.__demoStart = performance.now();
+require('@formatjs/intl-getcanonicallocales/polyfill.js');
+require('@formatjs/intl-locale/polyfill.js');
+require('@formatjs/intl-pluralrules/polyfill-force.js');
+require('@formatjs/intl-pluralrules/locale-data/en.js');
+require('@formatjs/intl-pluralrules/locale-data/fr.js');
+require('@formatjs/intl-pluralrules/locale-data/de.js');
+require('@formatjs/intl-pluralrules/locale-data/pl.js');
+require('@formatjs/intl-pluralrules/locale-data/ar.js');
+require('@formatjs/intl-relativetimeformat/polyfill-force.js');
+require('@formatjs/intl-relativetimeformat/locale-data/en.js');
+require('@formatjs/intl-relativetimeformat/locale-data/fr.js');
+require('@formatjs/intl-relativetimeformat/locale-data/de.js');
+require('@formatjs/intl-relativetimeformat/locale-data/pl.js');
+require('@formatjs/intl-relativetimeformat/locale-data/ar.js');
+require('@formatjs/intl-listformat/polyfill-force.js');
+require('@formatjs/intl-listformat/locale-data/en.js');
+require('@formatjs/intl-listformat/locale-data/fr.js');
+require('@formatjs/intl-listformat/locale-data/de.js');
+require('@formatjs/intl-listformat/locale-data/pl.js');
+require('@formatjs/intl-listformat/locale-data/ar.js');
+global.__demo = { impl: 'FormatJS', subtitle: 'JavaScript polyfills', color: '#d9480f', setupMs: performance.now() - global.__demoStart };

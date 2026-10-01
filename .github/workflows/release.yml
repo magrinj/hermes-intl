@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      increment:
+        description: Version bump type
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+env:
+  NDK_VERSION: 27.1.12297006
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Release
+    needs: ci
+    runs-on: macos-15
+    permissions:
+      contents: write
+      id-token: write # npm trusted publishing + provenance
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Update npm (trusted publishing needs npm 11.5+)
+        run: npm install -g npm@latest
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android,aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+      - name: Android NDK
+        run: echo "y" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null
+      - run: bun install --frozen-lockfile
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      # release-it bumps the version, rebuilds prebuilt/ with it (after:bump hook), updates the
+      # changelog, tags, publishes to npm and creates the GitHub release.
+      - name: Release
+        run: bun run release -- ${{ inputs.increment }} --ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+      - name: Show npm debug log on failure
+        if: failure()
+        run: cat ~/.npm/_logs/*-debug-0.log 2>/dev/null || echo "no npm debug log"

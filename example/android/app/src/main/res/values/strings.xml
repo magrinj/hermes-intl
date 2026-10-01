@@ -1,0 +1,3 @@
+<resources>
+    <!-- app_name comes from app/build.gradle: one per build (hermes-intl / FormatJS). -->
+</resources>

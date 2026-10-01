@@ -1,0 +1,24 @@
+# Built by scripts/build-prebuilt.sh (and in CI); shipped in the npm package, not in git.
+prebuilt/
+
+# Rust, host test runner, benchmarks
+rust/target/
+host/build/
+vendor/
+bench/node_modules/
+bench/flashlight/
+
+# Library build output (Gradle builds it in place when the example app links it)
+android/build/
+android/.cxx/
+android/.gradle/
+
+# Example app
+example/dist/
+example/ios/build*/
+
+node_modules/
+*.tgz
+.DS_Store
+.claude/
+.serena/

@@ -1,0 +1,97 @@
+{
+  "name": "hermes-intl",
+  "version": "0.1.0",
+  "description": "Native Intl.PluralRules, RelativeTimeFormat, ListFormat and Locale for Hermes, backed by ICU4X",
+  "main": "src/index.js",
+  "react-native": "src/index.js",
+  "types": "src/index.d.ts",
+  "scripts": {
+    "prebuilt": "scripts/build-prebuilt.sh",
+    "test": "cd rust && cargo test --lib && cd .. && node --test test/*.test.js",
+    "test262": "scripts/test262.sh",
+    "prepack": "scripts/check-prebuilt.sh",
+    "release": "release-it"
+  },
+  "files": [
+    "src",
+    "js",
+    "cpp/*.h",
+    "cpp/*.cpp",
+    "android/CMakeLists.txt",
+    "android/build.gradle",
+    "android/src",
+    "ios/*.h",
+    "ios/*.mm",
+    "prebuilt/android/*/libhermes_intl.so",
+    "prebuilt/ios/HermesIntlCore.xcframework",
+    "HermesIntl.podspec",
+    "react-native.config.js",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "react-native",
+    "hermes",
+    "intl",
+    "i18n",
+    "icu4x",
+    "pluralrules",
+    "relativetimeformat",
+    "listformat"
+  ],
+  "author": "Jérémy Magrin <contact@magrin.fr> (magrinj)",
+  "license": "MIT",
+  "peerDependencies": {
+    "react-native": ">=0.86"
+  },
+  "codegenConfig": {
+    "name": "HermesIntlSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "ios": {
+      "modulesProvider": {
+        "NativeHermesIntl": "HermesIntlProvider"
+      }
+    },
+    "android": {
+      "javaPackageName": "dev.hermesintl"
+    }
+  },
+  "repository": "https://github.com/magrinj/hermes-intl.git",
+  "bugs": {
+    "url": "https://github.com/magrinj/hermes-intl/issues"
+  },
+  "homepage": "https://github.com/magrinj/hermes-intl#readme",
+  "release-it": {
+    "git": {
+      "commitMessage": "chore: release v${version}",
+      "tagName": "v${version}"
+    },
+    "github": {
+      "release": true
+    },
+    "npm": {
+      "publish": true,
+      "skipChecks": true,
+      "publishArgs": [
+        "--provenance",
+        "--access",
+        "public"
+      ]
+    },
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": "angular",
+        "infile": "CHANGELOG.md"
+      }
+    },
+    "hooks": {
+      "after:bump": "scripts/build-prebuilt.sh"
+    }
+  },
+  "devDependencies": {
+    "@release-it/conventional-changelog": "^10.0.6",
+    "release-it": "^19.2.4"
+  }
+}

@@ -1,0 +1,31 @@
+// Runs codegen for HermesIntlSpec (React Native < 0.87 needs it for C++ modules) and exposes an
+// empty ReactPackage for autolinking. The module itself is C++ (CMakeLists.txt).
+apply plugin: "com.android.library"
+apply plugin: "com.facebook.react"
+
+def ext(name, fallback) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : fallback
+}
+
+android {
+  namespace "dev.hermesintl"
+  compileSdkVersion ext("compileSdkVersion", 36)
+  defaultConfig {
+    minSdkVersion ext("minSdkVersion", 24)
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+}
+
+react {
+  jsRootDir = file("../src/")
+  libraryName = "HermesIntlSpec"
+  codegenJavaPackageName = "dev.hermesintl"
+}

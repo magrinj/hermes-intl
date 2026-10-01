@@ -1,0 +1,8 @@
+# test262 tests expected to fail with the shipped build, one path per line (relative to test262/).
+# CI fails on any other failure, and on any listed test that starts passing.
+
+# Compares with Hermes's own Intl.NumberFormat("en-US-u-nu-arab"), which ignores -u-nu- on Apple
+# platforms. Our output matches V8.
+test/intl402/RelativeTimeFormat/prototype/format/en-us-numbering-systems.js
+# "gv" (Manx) is not in ICU4X's recommended locale set that the prebuilt binaries ship.
+test/intl402/PluralRules/prototype/resolvedOptions/plural-categories-order.js
