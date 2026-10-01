@@ -39,7 +39,7 @@ pub struct Rules {
 #[derive(PartialEq)]
 pub enum Formatted {
     NonFinite,
-    Finite(String, u8),
+    Finite(String, i16),
 }
 
 pub const ALL: [PluralCategory; 6] = [
@@ -100,15 +100,9 @@ impl Rules {
     }
 
     /// ResolvePlural: the category and the formatted number it was read from.
-    fn category(&self, x: &Decimal) -> (PluralCategory, Decimal, u8) {
+    fn category(&self, x: &Decimal) -> (PluralCategory, Decimal, i16) {
         let (d, exp) = self.format_with_exponent(x);
-        let ops: PluralOperands = if self.compact.is_some() {
-            (&CompactDecimal::from_significand_and_exponent(d.clone(), exp)).into()
-        } else {
-            // Scientific/engineering select on the mantissa, like ICU4C (no `c` operand).
-            (&d).into()
-        };
-        (self.rules.rules().category_for(ops), d, exp)
+        (self.rules.rules().category_for(operands(&d, exp)), d, exp)
     }
 
     /// ResolvePlural with its FormattedString, for selectRange. `None` = NaN or ±Infinity.
@@ -123,7 +117,7 @@ impl Rules {
     }
 
     /// ComputeExponent (§16.5.13) folded with FormatNumericToString of the scaled value.
-    fn format_with_exponent(&self, x: &Decimal) -> (Decimal, u8) {
+    fn format_with_exponent(&self, x: &Decimal) -> (Decimal, i16) {
         if self.o.notation == 0 || x.absolute.is_zero() {
             return (self.format(x), 0);
         }
@@ -136,10 +130,10 @@ impl Rules {
         let e = self.exponent_for(mag);
         let f = scaled(e);
         if f.absolute.is_zero() || f.absolute.nonzero_magnitude_start() == mag - e {
-            return (f, e.max(0) as u8);
+            return (f, e);
         }
         let e = self.exponent_for(mag + 1);
-        (scaled(e), e.max(0) as u8)
+        (scaled(e), e)
     }
 
     fn exponent_for(&self, mag: i16) -> i16 {
@@ -232,6 +226,20 @@ fn raw_precision(x: &Decimal, min_p: u8, max_p: u8, m: u8) -> (Decimal, i16) {
     d.absolute.trim_end();
     d.absolute.pad_end((e - min_p + 1).min(0));
     (d, e - max_p + 1)
+}
+
+/// The plural operands of mantissa × 10^exp, for every notation: the whole value, with a positive
+/// exponent as the `c` operand (CLDR samples list 1000 as "1c3" under English "other"). CLDR
+/// defines `c` for compact notation only, so a negative scientific exponent gets none.
+fn operands(d: &Decimal, exp: i16) -> PluralOperands {
+    if exp > 0 {
+        // CLDR rules test c up to 5 and i up to 18 digits: 255 decides like any larger exponent.
+        let c = exp.min(u8::MAX as i16) as u8;
+        return (&CompactDecimal::from_significand_and_exponent(d.clone(), c)).into();
+    }
+    let mut whole = d.clone();
+    whole.multiply_pow10(exp);
+    (&whole).into()
 }
 
 /// A JS Number as the Intl mathematical value (shortest round-trip digits, like ICU4C). None = NaN/±∞.
@@ -381,5 +389,40 @@ mod tests {
         .unwrap();
         assert_eq!(en.select(from_f64(1.0)), PluralCategory::Other); // "1.0"
         assert_eq!(Rules::new("ar", o()).unwrap().categories(), 0b111111);
+    }
+
+    #[test]
+    fn scientific_and_engineering_select_on_the_whole_value() {
+        let rules = |locale, notation| Rules::new(locale, Options { notation, ..o() }).unwrap();
+        // 1E3 is 1000: "other" in English, not the "one" of its mantissa.
+        assert_eq!(
+            rules("en", 1).select(from_f64(1000.0)),
+            PluralCategory::Other
+        );
+        assert_eq!(
+            rules("en", 2).select(from_f64(1000.0)),
+            PluralCategory::Other
+        );
+        assert_eq!(rules("en", 1).select(from_f64(1.0)), PluralCategory::One);
+        assert_eq!(
+            rules("pl", 1).select(from_f64(2000.0)),
+            PluralCategory::Many
+        );
+        // The exponent is the c operand, as in compact notation.
+        assert_eq!(rules("fr", 1).select(from_f64(1.5e6)), PluralCategory::Many);
+    }
+
+    #[test]
+    fn select_range_keeps_the_whole_exponent() {
+        let en = Rules::new("en", Options { notation: 1, ..o() }).unwrap();
+        // 1E-5 and 1E256 used to compare equal to 1E0, which skipped the range rules.
+        assert_eq!(
+            en.select_range(from_f64(1e-5), from_f64(1.0)),
+            PluralCategory::Other
+        );
+        assert_eq!(
+            en.select_range(from_f64(1.0), from_f64(1e256)),
+            PluralCategory::Other
+        );
     }
 }
