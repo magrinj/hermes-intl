@@ -124,7 +124,9 @@ The [example app](example/) exercises i18next; the others use the same construct
 ## What it does not touch
 
 `Intl.NumberFormat`, `Intl.DateTimeFormat` and `Intl.Collator` stay Hermes's own, and so do
-`toLocaleString`, `localeCompare` and `Date`. There is no network access, no storage and no UI.
+`toLocaleString`, `localeCompare` and `Date`. Hermes reads a lone `Intl.Locale` object as an empty
+list, so the shell wraps them to pass the object's tag instead; names, prototypes and everything
+else stay Hermes's. There is no network access, no storage and no UI.
 `Intl.DisplayNames` and `Intl.Segmenter` are not provided.
 
 ## Build and packaging

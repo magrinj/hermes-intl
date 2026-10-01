@@ -14,6 +14,9 @@ module.exports = function (native, global) {
   var ObjectPrototype = Object.prototype;
   var create = Object.create;
   var defineProperty = Object.defineProperty;
+  var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+  var getOwnPropertyNames = Object.getOwnPropertyNames;
+  var reflectConstruct = Reflect.construct;
   var getPrototypeOf = Object.getPrototypeOf;
   var setPrototypeOf = Object.setPrototypeOf;
   var floor = Math.floor;
@@ -935,6 +938,52 @@ module.exports = function (native, global) {
     },
   };
 
+  // Hermes's own Intl constructors and toLocale* methods read a lone Locale object as an empty
+  // list. Hand them its tag instead, which CanonicalizeLocaleList treats the same way.
+  function localeTag(v) {
+    var s = isObject(v) ? getLocaleSlots(v) : undefined;
+    return s !== undefined ? s.locale : v;
+  }
+
+  function patchable(o, k) {
+    var d = getOwnPropertyDescriptor(o, k);
+    return d !== undefined && typeof d.value === 'function' && d.writable && d.configurable ? d.value : undefined;
+  }
+
+  function acceptLocale(o, k, index) {
+    var original = patchable(o, k);
+    if (original === undefined) return;
+    var wrapper = index === 0
+      ? { m(locales, options) { return call(original, this, localeTag(locales), options); } }.m
+      : { m(that, locales, options) { return call(original, this, that, localeTag(locales), options); } }.m;
+    defineProperty(wrapper, 'name', { value: original.name });
+    defineProperty(wrapper, 'length', { value: original.length });
+    hidden(o, k, wrapper, true);
+  }
+
+  function acceptLocaleConstructor(name) {
+    var Original = patchable(Intl, name);
+    if (Original === undefined) return;
+    var proto = Original.prototype;
+    var constructorDesc = getOwnPropertyDescriptor(proto, 'constructor');
+    if (constructorDesc === undefined || !constructorDesc.configurable) return;
+    var Wrapped = function (locales, options) {
+      locales = localeTag(locales);
+      if (new.target === undefined) return call(Original, this, locales, options);
+      if (new.target === Wrapped) return new Original(locales, options);
+      return reflectConstruct(Original, [locales, options], new.target);
+    };
+    var statics = getOwnPropertyNames(Original);
+    for (var i = 0; i < statics.length; i++) {
+      if (statics[i] !== 'prototype') defineProperty(Wrapped, statics[i], getOwnPropertyDescriptor(Original, statics[i]));
+    }
+    defineProperty(Wrapped, 'prototype', { value: proto, writable: false });
+    acceptLocale(Wrapped, 'supportedLocalesOf', 0);
+    hidden(Intl, name, Wrapped, true);
+    constructorDesc.value = Wrapped;
+    defineProperty(proto, 'constructor', constructorDesc);
+  }
+
   if (Intl.Locale === undefined) {
     // Hermes's own getCanonicalLocales cannot see these Locale objects; replace it with the spec's.
     hidden(Intl, 'getCanonicalLocales', {
@@ -942,6 +991,17 @@ module.exports = function (native, global) {
         return canonicalizeLocaleList(locales);
       },
     }.getCanonicalLocales, true);
+    acceptLocaleConstructor('NumberFormat');
+    acceptLocaleConstructor('DateTimeFormat');
+    acceptLocaleConstructor('Collator');
+    acceptLocale(Number.prototype, 'toLocaleString', 0);
+    if (typeof BigInt === 'function') acceptLocale(BigInt.prototype, 'toLocaleString', 0);
+    acceptLocale(Date.prototype, 'toLocaleString', 0);
+    acceptLocale(Date.prototype, 'toLocaleDateString', 0);
+    acceptLocale(Date.prototype, 'toLocaleTimeString', 0);
+    acceptLocale(String.prototype, 'localeCompare', 1);
+    acceptLocale(String.prototype, 'toLocaleLowerCase', 0);
+    acceptLocale(String.prototype, 'toLocaleUpperCase', 0);
     var getterNames = Object.getOwnPropertyNames(localeGetters);
     for (var g = 0; g < getterNames.length; g++) {
       var d = Object.getOwnPropertyDescriptor(localeGetters, getterNames[g]);
