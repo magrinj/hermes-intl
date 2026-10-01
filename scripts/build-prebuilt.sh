@@ -9,7 +9,9 @@ BIN=${CARGO_HOME:-$HOME/.cargo}/bin
 RUSTC=$("$BIN/rustup" which rustc)
 export RUSTC
 CARGO=$("$BIN/rustup" which cargo)
-NDK=${ANDROID_NDK_HOME:-$HOME/Library/Android/sdk/ndk/27.1.12297006}
+NDK_VERSION=${NDK_VERSION:-27.1.12297006}
+NDK=${ANDROID_NDK_HOME:-${ANDROID_HOME:-$HOME/Library/Android/sdk}/ndk/$NDK_VERSION}
+[ -d "$NDK" ] || { echo "Android NDK not found at $NDK (set ANDROID_NDK_HOME)" >&2; exit 1; }
 NDK_BIN=$NDK/toolchains/llvm/prebuilt/darwin-x86_64/bin
 OUT=$PWD/prebuilt
 TARGET_DIR=$PWD/rust/target/prebuilt

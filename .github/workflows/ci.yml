@@ -98,8 +98,6 @@ jobs:
       - name: Android NDK
         run: echo "y" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" > /dev/null
       - run: scripts/build-prebuilt.sh
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
       - uses: actions/upload-artifact@v4
         with:
           name: prebuilt

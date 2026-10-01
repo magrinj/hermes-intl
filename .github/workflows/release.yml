@@ -53,7 +53,6 @@ jobs:
         run: bun run release -- ${{ inputs.increment }} --ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
       - name: Show npm debug log on failure
         if: failure()
         run: cat ~/.npm/_logs/*-debug-0.log 2>/dev/null || echo "no npm debug log"
