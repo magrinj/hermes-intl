@@ -18,7 +18,6 @@ module.exports = function (native, global) {
   var defineProperty = Object.defineProperty;
   var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
   var getOwnPropertyNames = Object.getOwnPropertyNames;
-  var reflectConstruct = Reflect.construct;
   var getPrototypeOf = Object.getPrototypeOf;
   var setPrototypeOf = Object.setPrototypeOf;
   var floor = Math.floor;
@@ -954,10 +953,23 @@ module.exports = function (native, global) {
   };
 
   // Hermes's own Intl constructors and toLocale* methods read a lone Locale object as an empty
-  // list. Hand them its tag instead, which CanonicalizeLocaleList treats the same way.
-  function localeTag(v) {
-    var s = isObject(v) ? getLocaleSlots(v) : undefined;
-    return s !== undefined ? s.locale : v;
+  // list, and one in a list through its patchable toString. Hand them tags instead, reading a list
+  // once as CanonicalizeLocaleList does; everything else is left for Hermes to judge.
+  function localeArg(v) {
+    if (!isObject(v)) return v;
+    var tag = localeTagOf(v);
+    if (tag !== undefined) return tag;
+    var len = trunc(+v.length) || 0;
+    var list = [];
+    for (var k = 0; k < len; k++) {
+      var key = '' + k;
+      if (key in v) {
+        var el = v[key];
+        var elTag = localeTagOf(el);
+        append(list, elTag !== undefined ? elTag : el);
+      }
+    }
+    return list;
   }
 
   function patchable(o, k) {
@@ -969,8 +981,8 @@ module.exports = function (native, global) {
     var original = patchable(o, k);
     if (original === undefined) return;
     var wrapper = index === 0
-      ? { m(locales, options) { return call(original, this, localeTag(locales), options); } }.m
-      : { m(that, locales, options) { return call(original, this, that, localeTag(locales), options); } }.m;
+      ? { m(locales, options) { return call(original, this, localeArg(locales), options); } }.m
+      : { m(that, locales, options) { return call(original, this, that, localeArg(locales), options); } }.m;
     defineProperty(wrapper, 'name', { value: original.name });
     defineProperty(wrapper, 'length', { value: original.length });
     hidden(o, k, wrapper, true);
@@ -983,10 +995,12 @@ module.exports = function (native, global) {
     var constructorDesc = getOwnPropertyDescriptor(proto, 'constructor');
     if (constructorDesc === undefined || !constructorDesc.configurable) return;
     var Wrapped = function (locales, options) {
-      locales = localeTag(locales);
-      if (new.target === undefined) return call(Original, this, locales, options);
-      if (new.target === Wrapped) return new Original(locales, options);
-      return reflectConstruct(Original, [locales, options], new.target);
+      if (new.target === undefined) return call(Original, this, localeArg(locales), options);
+      // Hermes builds the object from its own prototype; a subclass expects new.target's.
+      var proto = new.target.prototype;
+      var obj = new Original(localeArg(locales), options);
+      if (isObject(proto) && getPrototypeOf(obj) !== proto) setPrototypeOf(obj, proto);
+      return obj;
     };
     var statics = getOwnPropertyNames(Original);
     for (var i = 0; i < statics.length; i++) {

@@ -98,7 +98,7 @@ i18n.t('likes', { count: 3 }); // likes_few in Polish, likes_other in English
 | `Intl.ListFormat` | conjunction / disjunction / unit, long / short / narrow, `formatToParts` |
 | `Intl.Locale` | all getters, `maximize`, `minimize`, and the Locale Info methods (`getWeekInfo`, `getTextInfo`, `getCalendars`, `getHourCycles`, `getNumberingSystems`, `getTimeZones`, `getCollations`) |
 | `Intl.getCanonicalLocales` | replaced so it accepts `Intl.Locale` objects |
-| `Intl.NumberFormat`, `DateTimeFormat`, `Collator`, `toLocaleString`, `localeCompare` | Hermes's own, wrapped so they accept an `Intl.Locale` object as the locale |
+| `Intl.NumberFormat`, `DateTimeFormat`, `Collator`, `toLocaleString`, `localeCompare` | Hermes's own, wrapped so they accept `Intl.Locale` objects, alone or in a list |
 
 Each constructor is installed only if Hermes lacks it. On other engines (JSC, web) the import does
 nothing. Conformance: 838 of 842 test262 `intl402` runs pass for these APIs (each test runs in
