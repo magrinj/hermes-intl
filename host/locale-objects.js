@@ -29,4 +29,19 @@ check(Object.getOwnPropertyDescriptor(Intl, 'NumberFormat').enumerable, false, '
 check(Object.getOwnPropertyDescriptor(NF, 'prototype').writable, false, 'prototype writable');
 check(String.prototype.localeCompare.name + String.prototype.localeCompare.length, 'localeCompare1', 'localeCompare shape');
 check(Number.prototype.toLocaleString.length, 0, 'toLocaleString length');
+
+// A subclass instance gets the subclass's prototype, which Hermes alone does not give it.
+class MyNF extends NF {}
+var mine = new MyNF(de);
+check(mine instanceof MyNF && mine instanceof NF, true, 'subclass instanceof');
+check(mine.resolvedOptions().locale + ' ' + mine.format(1.5), 'de 1,5', 'subclass instance works');
+
+// A list is read once, and a Locale in it counts by its tag, not by a patched toString.
+var reads = 0;
+var list = { length: 1, get 0() { reads++; return 'de'; } };
+check(new NF(list).resolvedOptions().locale + ' ' + reads, 'de 1', 'list read once');
+var localeToString = Intl.Locale.prototype.toString;
+Intl.Locale.prototype.toString = function () { return 'en'; };
+check(new NF([de]).resolvedOptions().locale, 'de', 'Locale in a list with toString patched');
+Intl.Locale.prototype.toString = localeToString;
 print('locale objects: ok');
