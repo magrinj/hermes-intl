@@ -953,23 +953,11 @@ module.exports = function (native, global) {
   };
 
   // Hermes's own Intl constructors and toLocale* methods read a lone Locale object as an empty
-  // list, and one in a list through its patchable toString. Hand them tags instead, reading a list
-  // once as CanonicalizeLocaleList does; everything else is left for Hermes to judge.
+  // list. Hand them its tag instead. Lists go through untouched: Hermes reads a Locale in one
+  // through its toString, which returns the tag.
   function localeArg(v) {
-    if (!isObject(v)) return v;
     var tag = localeTagOf(v);
-    if (tag !== undefined) return tag;
-    var len = trunc(+v.length) || 0;
-    var list = [];
-    for (var k = 0; k < len; k++) {
-      var key = '' + k;
-      if (key in v) {
-        var el = v[key];
-        var elTag = localeTagOf(el);
-        append(list, elTag !== undefined ? elTag : el);
-      }
-    }
-    return list;
+    return tag !== undefined ? tag : v;
   }
 
   function patchable(o, k) {

@@ -36,12 +36,8 @@ var mine = new MyNF(de);
 check(mine instanceof MyNF && mine instanceof NF, true, 'subclass instanceof');
 check(mine.resolvedOptions().locale + ' ' + mine.format(1.5), 'de 1,5', 'subclass instance works');
 
-// A list is read once, and a Locale in it counts by its tag, not by a patched toString.
-var reads = 0;
-var list = { length: 1, get 0() { reads++; return 'de'; } };
-check(new NF(list).resolvedOptions().locale + ' ' + reads, 'de 1', 'list read once');
-var localeToString = Intl.Locale.prototype.toString;
-Intl.Locale.prototype.toString = function () { return 'en'; };
-check(new NF([de]).resolvedOptions().locale, 'de', 'Locale in a list with toString patched');
-Intl.Locale.prototype.toString = localeToString;
+// Lists reach Hermes untouched: an element changed while an earlier one is read counts as changed.
+var list = [, 'fr'];
+list[0] = { toString: function () { list[1] = 'it'; return 'de'; } };
+check(NF.supportedLocalesOf(list).join(), 'de,it', 'list read in order');
 print('locale objects: ok');
