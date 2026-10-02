@@ -10,6 +10,8 @@ module.exports = function (native, global) {
     Object.defineProperty(Intl, Symbol.toStringTag, { value: 'Intl', configurable: true });
     Object.defineProperty(global, 'Intl', { value: Intl, writable: true, configurable: true });
   }
+  // The engine's own Intl.Locale, if it ships one: its toString checks the brand and returns [[Locale]].
+  var engineLocaleToString = typeof Intl.Locale === 'function' ? Intl.Locale.prototype.toString : undefined;
 
   var ObjectPrototype = Object.prototype;
   var create = Object.create;
@@ -72,6 +74,19 @@ module.exports = function (native, global) {
   // Declared up front: Intl.Locale objects are accepted wherever a locale list is.
   var localeSlots = new WeakMap();
   var getLocaleSlots = WeakMap.prototype.get.bind(localeSlots);
+
+  // The [[Locale]] of an Intl.Locale object, ours or the engine's, else undefined.
+  function localeTagOf(v) {
+    if (!isObject(v)) return undefined;
+    var s = getLocaleSlots(v);
+    if (s !== undefined) return s.locale;
+    if (engineLocaleToString === undefined) return undefined;
+    try {
+      return call(engineLocaleToString, v);
+    } catch (e) {
+      return undefined;
+    }
+  }
 
   function indexOf(list, v) {
     for (var i = 0; i < list.length; i++) if (list[i] === v) return i;
@@ -174,7 +189,7 @@ module.exports = function (native, global) {
     var seen = [];
     if (locales === undefined) return seen;
     var O;
-    if (typeof locales === 'string' || (isObject(locales) && getLocaleSlots(locales) !== undefined)) {
+    if (typeof locales === 'string' || localeTagOf(locales) !== undefined) {
       O = [locales];
     } else {
       if (locales === null) throw new TypeError('Cannot convert null to object');
@@ -189,8 +204,8 @@ module.exports = function (native, global) {
         if (typeof el !== 'string' && !isObject(el)) {
           throw new TypeError('Language ID should be string or object.');
         }
-        var ls = isObject(el) ? getLocaleSlots(el) : undefined;
-        var tag = ls !== undefined ? ls.locale : canonicalize(toString(el));
+        var tag = localeTagOf(el);
+        if (tag === undefined) tag = canonicalize(toString(el));
         if (tag === undefined) throw new RangeError('Incorrect locale information provided');
         if (indexOf(seen, tag) < 0) append(seen, tag);
       }
