@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.2](https://github.com/magrinj/hermes-intl/compare/v0.1.1...v0.1.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* pass Locale lists by tag and keep subclass prototypes in the wrappers ([f16ae7b](https://github.com/magrinj/hermes-intl/commit/f16ae7b6734b4ba6fd6d389881e66e2f4b233b81))
+* pass locale lists to Hermes untouched ([bf11910](https://github.com/magrinj/hermes-intl/commit/bf119104db2e2a1faf01cebf0a9063be59af9fce))
+* read an engine's own Intl.Locale objects as one locale ([e1877c8](https://github.com/magrinj/hermes-intl/commit/e1877c814788d4386a9eced62609171b1d3cc58f))
+
 ## [0.1.1](https://github.com/magrinj/hermes-intl/compare/v0.1.0...v0.1.1) (2026-10-01)
 
 
