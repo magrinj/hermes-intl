@@ -2,6 +2,8 @@
   <img src=".github/assets/hermes-intl-banner.jpg" alt="hermes-intl" width="100%" />
 </a>
 
+<a href="https://useffect.sh/seal/magrinj/hermes-intl"><img align="right" width="88" src="https://useffect.sh/seal/magrinj/hermes-intl.svg" alt="Maintained by useffect.sh"></a>
+
 # hermes-intl
 
 [![npm version](https://img.shields.io/npm/v/hermes-intl.svg)](https://www.npmjs.com/package/hermes-intl)
@@ -185,7 +187,7 @@ If you find this library useful, consider supporting its development:
 ---
 
 <p align="center">
-  Made with ❤️ by <a href="https://www.linkedin.com/in/jeremy-magrin/">Jérémy Magrin</a>
+  Made with ❤️ by <a href="https://www.linkedin.com/in/jeremy-magrin/">Jérémy Magrin</a>, part of <a href="https://useffect.sh">useffect.sh</a>, a collective of senior React Native engineers
 </p>
 
 <p align="center">
