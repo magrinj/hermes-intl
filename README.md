@@ -2,9 +2,9 @@
   <img src=".github/assets/hermes-intl-banner.jpg" alt="hermes-intl" width="100%" />
 </a>
 
-<a href="https://useffect.sh/seal/magrinj/hermes-intl"><img align="right" width="88" src="https://useffect.sh/seal/magrinj/hermes-intl.svg" alt="Maintained by useffect.sh"></a>
-
 # hermes-intl
+
+<a href="https://useffect.sh/seal/magrinj/hermes-intl"><img align="right" width="120" src="https://useffect.sh/seal/magrinj/hermes-intl.svg" alt="Maintained by useffect.sh"></a>
 
 [![npm version](https://img.shields.io/npm/v/hermes-intl.svg)](https://www.npmjs.com/package/hermes-intl)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
