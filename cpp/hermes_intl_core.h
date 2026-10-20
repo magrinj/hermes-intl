@@ -63,6 +63,26 @@ HiRelativeTimeFormat *hi_rtf_new(const char *locale, size_t len, uint8_t style, 
 void hi_rtf_free(HiRelativeTimeFormat *f);
 HiStr hi_rtf_format(const HiRelativeTimeFormat *f, double value, uint8_t unit, bool packed);
 
+// Intl.NumberFormat, built on Apple platforms only. hi_nf_format_range: x and y not NaN; packed
+// parts carry their source in bits 5 and 6.
+typedef struct HiNumberFormat HiNumberFormat;
+typedef struct {
+  HiPluralOptions digits;
+  uint8_t style;             // 0 decimal, 1 percent, 2 currency, 3 unit
+  char currency[3];
+  uint8_t currency_display;  // 0 code, 1 symbol, 2 narrowSymbol, 3 name
+  bool accounting;
+  uint8_t unit_display;      // 0 long, 1 short, 2 narrow
+  uint8_t grouping;          // 0 auto, 1 always, 2 min2, 3 false
+  uint8_t sign_display;      // 0 auto, 1 never, 2 always, 3 exceptZero, 4 negative
+  uint8_t min_integer;
+} HiNumberOptions;
+uint8_t hi_currency_digits(const char *code, size_t len);
+HiNumberFormat *hi_nf_new(const char *locale, size_t len, const HiNumberOptions *o, const char *unit, size_t unit_len);
+void hi_nf_free(HiNumberFormat *f);
+HiStr hi_nf_format(const HiNumberFormat *f, const HiNumber *x, bool packed);
+HiStr hi_nf_format_range(const HiNumberFormat *f, const HiNumber *x, const HiNumber *y, bool packed);
+
 // Intl.ListFormat. kind 0 conjunction, 1 disjunction, 2 unit; style 0 long, 1 short, 2 narrow.
 typedef struct HiListFormat HiListFormat;
 typedef struct {

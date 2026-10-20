@@ -5,9 +5,15 @@ use fixed_decimal::{
     CompactDecimal, Decimal, FloatPrecision, RoundingIncrement, SignedRoundingMode,
     UnsignedRoundingMode,
 };
+use icu::decimal::provider::{
+    DecimalCompactLongV1, DecimalCompactShortV1, DecimalDigitsV1, DecimalSymbolsV1,
+};
 use icu::decimal::CompactDecimalFormatter;
 use icu::locale::Locale;
+use icu::plurals::provider::PluralsCardinalV1;
 use icu::plurals::{PluralCategory, PluralOperands, PluralRules, PluralRulesWithRanges};
+use icu_experimental::relativetime::provider::*;
+use icu_provider::prelude::*;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -27,6 +33,57 @@ pub struct Options {
     pub rounding_mode: u8,
     pub strip_if_integer: bool,
 }
+
+/// The compiled data for ICU4X's formatters, except that plural rules are read by data_locale
+/// (they would otherwise be root's for sr-Latn) and that digits exist for every CLDR numbering system.
+pub(crate) struct Data {
+    plurals: DataLocale,
+}
+
+impl Data {
+    pub(crate) fn new(loc: &Locale) -> Self {
+        Self {
+            plurals: DataLocale::from(&data_locale(loc, false)),
+        }
+    }
+}
+
+impl DataProvider<DecimalDigitsV1> for Data {
+    fn load(&self, req: DataRequest) -> Result<DataResponse<DecimalDigitsV1>, DataError> {
+        match crate::number::digits(req.id.marker_attributes.as_str()) {
+            Some(d) => Ok(DataResponse {
+                metadata: Default::default(),
+                payload: DataPayload::from_owned(d),
+            }),
+            None => icu::decimal::provider::Baked.load(req),
+        }
+    }
+}
+
+impl DataProvider<PluralsCardinalV1> for Data {
+    fn load(&self, req: DataRequest) -> Result<DataResponse<PluralsCardinalV1>, DataError> {
+        let id = DataIdentifierBorrowed::for_locale(&self.plurals);
+        icu::plurals::provider::Baked.load(DataRequest { id, ..req })
+    }
+}
+
+macro_rules! forward {
+    ($baked:path: $($marker:ident),+) => {
+        $(impl DataProvider<$marker> for Data {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<$marker>, DataError> {
+                $baked.load(req)
+            }
+        })+
+    };
+}
+forward!(icu::decimal::provider::Baked: DecimalSymbolsV1, DecimalCompactShortV1, DecimalCompactLongV1);
+forward!(icu_experimental::provider::Baked:
+    LongSecondRelativeV1, LongMinuteRelativeV1, LongHourRelativeV1, LongDayRelativeV1,
+    LongWeekRelativeV1, LongMonthRelativeV1, LongQuarterRelativeV1, LongYearRelativeV1,
+    ShortSecondRelativeV1, ShortMinuteRelativeV1, ShortHourRelativeV1, ShortDayRelativeV1,
+    ShortWeekRelativeV1, ShortMonthRelativeV1, ShortQuarterRelativeV1, ShortYearRelativeV1,
+    NarrowSecondRelativeV1, NarrowMinuteRelativeV1, NarrowHourRelativeV1, NarrowDayRelativeV1,
+    NarrowWeekRelativeV1, NarrowMonthRelativeV1, NarrowQuarterRelativeV1, NarrowYearRelativeV1);
 
 pub struct Rules {
     rules: PluralRulesWithRanges<PluralRules>,
@@ -92,12 +149,23 @@ impl Rules {
             PluralRulesWithRanges::try_new_cardinal(prefs)
         }
         .ok()?;
+        let data = Data::new(&loc);
         let compact = match (o.notation, o.compact_long) {
             (3, false) => Some(
-                CompactDecimalFormatter::try_new_short((&loc).into(), Default::default()).ok()?,
+                CompactDecimalFormatter::try_new_short_unstable(
+                    &data,
+                    (&loc).into(),
+                    Default::default(),
+                )
+                .ok()?,
             ),
             (3, true) => Some(
-                CompactDecimalFormatter::try_new_long((&loc).into(), Default::default()).ok()?,
+                CompactDecimalFormatter::try_new_long_unstable(
+                    &data,
+                    (&loc).into(),
+                    Default::default(),
+                )
+                .ok()?,
             ),
             _ => None,
         };
@@ -147,8 +215,23 @@ impl Rules {
         }
     }
 
+    /// The cardinal plural rules.
+    pub(crate) fn cardinal(&self) -> &PluralRules {
+        self.rules.rules()
+    }
+
+    /// The compact formatter, in compact notation.
+    pub(crate) fn compact(&self) -> Option<&CompactDecimalFormatter> {
+        self.compact.as_ref()
+    }
+
+    /// The plural category of a formatted mantissa and exponent.
+    pub(crate) fn category_of(&self, d: &Decimal, exp: i16) -> PluralCategory {
+        self.rules.rules().category_for(operands(d, exp))
+    }
+
     /// ComputeExponent (§16.5.13) folded with FormatNumericToString of the scaled value.
-    fn format_with_exponent(&self, x: &Decimal) -> (Decimal, i16) {
+    pub(crate) fn format_with_exponent(&self, x: &Decimal) -> (Decimal, i16) {
         if self.o.notation == 0 || x.absolute.is_zero() {
             return (self.format(x), 0);
         }

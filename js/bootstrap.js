@@ -70,7 +70,11 @@ module.exports = function (native, global) {
   var INCREMENTS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000];
   var STYLES = ['long', 'short', 'narrow'];
   // Part kinds, shared with rust/src/parts.rs.
-  var PART_TYPES = ['literal', 'integer', 'group', 'decimal', 'fraction', 'element'];
+  var PART_TYPES = ['literal', 'integer', 'group', 'decimal', 'fraction', 'element', 'minusSign', 'unit', 'plusSign',
+    'percentSign', 'currency', 'compact', 'exponentSeparator', 'exponentMinusSign', 'exponentInteger', 'nan', 'infinity',
+    'approximatelySign'];
+  // formatRangeToParts sources, in bits 5 and 6 of a part's kind.
+  var PART_SOURCES = [undefined, 'startRange', 'endRange', 'shared'];
 
   // Declared up front: Intl.Locale objects are accepted wherever a locale list is.
   var localeSlots = new WeakMap();
@@ -312,9 +316,11 @@ module.exports = function (native, global) {
       var kind = num(2 + 2 * i);
       var length = num(2 + 2 * n + 2 * i);
       var value = slice(packed, offset, offset + length);
-      append(result, unit !== undefined && kind !== 0
-        ? { type: PART_TYPES[kind], value: value, unit: unit }
-        : { type: PART_TYPES[kind], value: value });
+      var type = PART_TYPES[kind & 31];
+      var source = PART_SOURCES[kind >> 5];
+      append(result, source !== undefined ? { type: type, value: value, source: source }
+        : unit !== undefined && kind !== 0 ? { type: type, value: value, unit: unit }
+        : { type: type, value: value });
       offset += length;
     }
     return result;
@@ -349,8 +355,8 @@ module.exports = function (native, global) {
     };
   }
 
-  function installConstructor(name, ctor, methods, statics) {
-    if (Intl[name] !== undefined) return;
+  function installConstructor(name, ctor, methods, statics, replace) {
+    if (Intl[name] !== undefined && !replace) return;
     var proto = ctor.prototype;
     for (var k in methods) hidden(proto, k, methods[k], true);
     defineProperty(proto, Symbol.toStringTag, { value: 'Intl.' + name, configurable: true });
@@ -657,6 +663,251 @@ module.exports = function (native, global) {
     },
   };
   installConstructor('ListFormat', ListFormat, lfMethods, { supportedLocalesOf: supportedLocalesOf });
+
+  // Intl.NumberFormat, in place of Hermes's own where it has no formatToParts: on Apple platforms,
+  // where it also ignores compact notation, signDisplay, roundingMode and -u-nu-.
+  var HermesNumberFormat = Intl.NumberFormat;
+  var ownNumberFormat = typeof native.nfNew === 'function' &&
+    (typeof HermesNumberFormat !== 'function' || typeof HermesNumberFormat.prototype.formatToParts !== 'function');
+  var nfNew = native.nfNew;
+  var nfFormat = native.nfFormat;
+  var nfFormatRange = native.nfFormatRange;
+  var currencyDigits = native.currencyDigits;
+  var NF_STYLES = ['decimal', 'percent', 'currency', 'unit'];
+  var CURRENCY_DISPLAYS = ['code', 'symbol', 'narrowSymbol', 'name'];
+  var GROUPINGS = ['auto', 'always', 'min2', false];
+  var SIGN_DISPLAYS = ['auto', 'never', 'always', 'exceptZero', 'negative'];
+  var SANCTIONED_UNITS = ['acre', 'bit', 'byte', 'celsius', 'centimeter', 'day', 'degree', 'fahrenheit', 'fluid-ounce',
+    'foot', 'gallon', 'gigabit', 'gigabyte', 'gram', 'hectare', 'hour', 'inch', 'kilobit', 'kilobyte', 'kilogram',
+    'kilometer', 'liter', 'megabit', 'megabyte', 'meter', 'microsecond', 'mile', 'mile-scandinavian', 'milliliter',
+    'millimeter', 'millisecond', 'minute', 'month', 'nanosecond', 'ounce', 'percent', 'petabyte', 'pound', 'second',
+    'stone', 'terabit', 'terabyte', 'week', 'yard', 'year'];
+  // IsWellFormedCurrencyCode, without a RegExp: NumberFormat must leave RegExp.$_ untouched.
+  function isCurrencyCode(c) {
+    if (c.length !== 3) return false;
+    for (var i = 0; i < 3; i++) {
+      var u = charCodeAt(c, i) | 0x20;
+      if (u < 0x61 || u > 0x7a) return false;
+    }
+    return true;
+  }
+  var nfSlots = new WeakMap();
+  var getNfSlots = WeakMap.prototype.get.bind(nfSlots);
+  var setNfSlots = WeakMap.prototype.set.bind(nfSlots);
+  var nfOf = slotsOf(getNfSlots, 'NumberFormat');
+  // %Intl%.[[FallbackSymbol]], for the legacy constructor mode (ECMA-402 4.3 Note 1).
+  var fallbackSymbol = Symbol('IntlLegacyConstructedSymbol');
+
+  // IsWellFormedUnitIdentifier.
+  function isWellFormedUnit(unit) {
+    if (indexOf(SANCTIONED_UNITS, unit) >= 0) return true;
+    var i = stringIndexOf(unit, '-per-');
+    return i >= 0 && indexOf(SANCTIONED_UNITS, slice(unit, 0, i)) >= 0 && indexOf(SANCTIONED_UNITS, slice(unit, i + 5)) >= 0;
+  }
+
+  // GetBooleanOrStringNumberFormatOption.
+  function booleanOrStringOption(options, key, values, fallback) {
+    var v = options[key];
+    if (v === undefined) return fallback;
+    if (v === true) return true;
+    if (!v) return false;
+    v = toString(v);
+    if (indexOf(values, v) < 0) throw new RangeError('Value ' + v + ' out of range for ' + key);
+    return v;
+  }
+
+  // InitializeNumberFormat.
+  function initNumberFormat(locales, options) {
+    var requested = canonicalizeLocaleList(locales);
+    options = coerceOptionsToObject(options);
+    getOption(options, 'localeMatcher', ['lookup', 'best fit'], 'best fit');
+    var nu = getOptionAny(options, 'numberingSystem');
+    if (nu !== undefined && !isType(nu)) throw new RangeError('Invalid numberingSystem: ' + nu);
+    var r = resolveLocale(requested, true, nu);
+    var s = create(null);
+    s.locale = r.locale;
+    s.numberingSystem = r.nu;
+    // SetNumberFormatUnitOptions.
+    s.style = getOption(options, 'style', NF_STYLES, 'decimal');
+    var currency = getOptionAny(options, 'currency');
+    if (currency === undefined) {
+      if (s.style === 'currency') throw new TypeError('Currency code is required with currency style.');
+    } else if (!isCurrencyCode(currency)) {
+      throw new RangeError('Invalid currency code: ' + currency);
+    }
+    var currencyDisplay = getOption(options, 'currencyDisplay', CURRENCY_DISPLAYS, 'symbol');
+    var currencySign = getOption(options, 'currencySign', ['standard', 'accounting'], 'standard');
+    var unit = getOptionAny(options, 'unit');
+    if (unit === undefined) {
+      if (s.style === 'unit') throw new TypeError('Unit is required with unit style.');
+    } else if (!isWellFormedUnit(unit)) {
+      throw new RangeError('Invalid unit argument: ' + unit);
+    }
+    var unitDisplay = getOption(options, 'unitDisplay', ['short', 'narrow', 'long'], 'short');
+    if (s.style === 'currency') {
+      s.currency = toUpperCase(currency);
+      s.currencyDisplay = currencyDisplay;
+      s.currencySign = currencySign;
+    }
+    if (s.style === 'unit') {
+      s.unit = unit;
+      s.unitDisplay = unitDisplay;
+    }
+    s.notation = getOption(options, 'notation', NOTATIONS, 'standard');
+    var mnfdDefault = 0;
+    var mxfdDefault = s.style === 'percent' ? 0 : 3;
+    if (s.style === 'currency' && s.notation === 'standard') mnfdDefault = mxfdDefault = currencyDigits(s.currency);
+    setDigitOptions(s, options, mnfdDefault, mxfdDefault, s.notation);
+    var compactDisplay = getOption(options, 'compactDisplay', ['short', 'long'], 'short');
+    var defaultUseGrouping = 'auto';
+    if (s.notation === 'compact') {
+      s.compactDisplay = compactDisplay;
+      defaultUseGrouping = 'min2';
+    }
+    var useGrouping = booleanOrStringOption(options, 'useGrouping', ['min2', 'auto', 'always', 'true', 'false'], defaultUseGrouping);
+    if (useGrouping === 'true' || useGrouping === 'false') useGrouping = defaultUseGrouping;
+    if (useGrouping === true) useGrouping = 'always';
+    s.useGrouping = useGrouping;
+    s.signDisplay = getOption(options, 'signDisplay', SIGN_DISPLAYS, 'auto');
+    s.handle = nfNew(
+      r.dataLocale,
+      false,
+      indexOf(NOTATIONS, s.notation),
+      compactDisplay === 'long',
+      s.minimumFractionDigits === undefined ? 0 : s.minimumFractionDigits,
+      s.maximumFractionDigits === undefined ? 3 : s.maximumFractionDigits,
+      s.minimumSignificantDigits === undefined ? 1 : s.minimumSignificantDigits,
+      s.maximumSignificantDigits === undefined ? 21 : s.maximumSignificantDigits,
+      s.roundingType,
+      s.roundingIncrement,
+      indexOf(ROUNDING_MODES, s.roundingMode),
+      s.trailingZeroDisplay === 'stripIfInteger',
+      indexOf(NF_STYLES, s.style),
+      s.currency === undefined ? '' : s.currency,
+      indexOf(CURRENCY_DISPLAYS, currencyDisplay),
+      currencySign === 'accounting',
+      s.unit === undefined ? '' : s.unit,
+      indexOf(['long', 'short', 'narrow'], unitDisplay),
+      indexOf(GROUPINGS, useGrouping),
+      indexOf(SIGN_DISPLAYS, s.signDisplay),
+      s.minimumIntegerDigits
+    );
+    return s;
+  }
+
+  // OrdinaryHasInstance(%Intl.NumberFormat%, o).
+  function isNumberFormatInstance(o) {
+    for (var p = getPrototypeOf(o); p !== null; p = getPrototypeOf(p)) {
+      if (p === NumberFormat.prototype) return true;
+    }
+    return false;
+  }
+
+  function NumberFormat() {
+    var self = this;
+    if (new.target === undefined) self = create(NumberFormat.prototype);
+    else construct(self, new.target, NumberFormat, 'NumberFormat');
+    setNfSlots(self, initNumberFormat(arguments[0], arguments[1]));
+    // ChainNumberFormat: Intl.NumberFormat.call(o) on an o inheriting from the prototype.
+    if (new.target === undefined && isObject(this) && isNumberFormatInstance(this)) {
+      defineProperty(this, fallbackSymbol, { value: self });
+      return this;
+    }
+    return self;
+  }
+
+  // UnwrapNumberFormat.
+  function unwrapNumberFormat(nf, method) {
+    if (isObject(nf) && getNfSlots(nf) === undefined && isNumberFormatInstance(nf)) nf = nf[fallbackSymbol];
+    return nfOf(nf, method);
+  }
+
+  function nfRange(nf, method, start, end, packed) {
+    var s = nfOf(nf, method);
+    if (start === undefined || end === undefined) throw new TypeError('start and end are required');
+    var x = toIntlMV(start);
+    var y = toIntlMV(end);
+    if (x !== x || y !== y) throw new RangeError('start and end must not be NaN');
+    var out = nfFormatRange(s.handle, x, y, packed);
+    return packed ? unpackParts(out) : out;
+  }
+
+  var nfMethods = {
+    formatToParts(value) {
+      var s = nfOf(this, 'formatToParts');
+      return unpackParts(nfFormat(s.handle, toIntlMV(value), true));
+    },
+    formatRange(start, end) {
+      return nfRange(this, 'formatRange', start, end, false);
+    },
+    formatRangeToParts(start, end) {
+      return nfRange(this, 'formatRangeToParts', start, end, true);
+    },
+    resolvedOptions() {
+      var s = unwrapNumberFormat(this, 'resolvedOptions');
+      // Literal in the spec's key order; keys whose slot is unset are removed (order is kept).
+      var o = {
+        locale: s.locale,
+        numberingSystem: s.numberingSystem,
+        style: s.style,
+        currency: s.currency,
+        currencyDisplay: s.currencyDisplay,
+        currencySign: s.currencySign,
+        unit: s.unit,
+        unitDisplay: s.unitDisplay,
+        minimumIntegerDigits: s.minimumIntegerDigits,
+        minimumFractionDigits: s.minimumFractionDigits,
+        maximumFractionDigits: s.maximumFractionDigits,
+        minimumSignificantDigits: s.minimumSignificantDigits,
+        maximumSignificantDigits: s.maximumSignificantDigits,
+        useGrouping: s.useGrouping,
+        notation: s.notation,
+        compactDisplay: s.compactDisplay,
+        signDisplay: s.signDisplay,
+        roundingIncrement: s.roundingIncrement,
+        roundingMode: s.roundingMode,
+        roundingPriority: s.roundingPriority,
+        trailingZeroDisplay: s.trailingZeroDisplay,
+      };
+      var keys = ['currency', 'currencyDisplay', 'currencySign', 'unit', 'unitDisplay', 'minimumFractionDigits',
+        'maximumFractionDigits', 'minimumSignificantDigits', 'maximumSignificantDigits', 'compactDisplay'];
+      for (var i = 0; i < keys.length; i++) if (o[keys[i]] === undefined) delete o[keys[i]];
+      return o;
+    },
+  };
+
+  if (ownNumberFormat) {
+    installConstructor('NumberFormat', NumberFormat, nfMethods, { supportedLocalesOf: supportedLocalesOf }, true);
+    // A getter returning a bound function, made once per instance. A method, renamed: Hermes gives
+    // getter syntax functions a prototype property.
+    var formatGetter = {
+      format() {
+        var s = unwrapNumberFormat(this, 'format');
+        if (s.boundFormat === undefined) {
+          s.boundFormat = [(value) => nfFormat(s.handle, toIntlMV(value), false)][0];
+        }
+        return s.boundFormat;
+      },
+    }.format;
+    defineProperty(formatGetter, 'name', { value: 'get format' });
+    defineProperty(NumberFormat.prototype, 'format', { get: formatGetter, enumerable: false, configurable: true });
+    var numberValueOf = Number.prototype.valueOf;
+    hidden(Number.prototype, 'toLocaleString', {
+      toLocaleString() {
+        var x = call(numberValueOf, this);
+        return nfFormat(initNumberFormat(arguments[0], arguments[1]).handle, x, false);
+      },
+    }.toLocaleString, true);
+    if (typeof BigInt === 'function') {
+      var bigintValueOf = BigInt.prototype.valueOf;
+      hidden(BigInt.prototype, 'toLocaleString', {
+        toLocaleString() {
+          var x = call(bigintValueOf, this);
+          return nfFormat(initNumberFormat(arguments[0], arguments[1]).handle, '' + x, false);
+        },
+      }.toLocaleString, true);
+    }
+  }
 
   var setLocaleSlots = WeakMap.prototype.set.bind(localeSlots);
   var localeOf = slotsOf(getLocaleSlots, 'Locale');
@@ -1012,11 +1263,14 @@ module.exports = function (native, global) {
         return canonicalizeLocaleList(locales);
       },
     }.getCanonicalLocales, true);
-    acceptLocaleConstructor('NumberFormat');
+    // Our NumberFormat takes Locale objects already.
+    if (!ownNumberFormat) {
+      acceptLocaleConstructor('NumberFormat');
+      acceptLocale(Number.prototype, 'toLocaleString', 0);
+      if (typeof BigInt === 'function') acceptLocale(BigInt.prototype, 'toLocaleString', 0);
+    }
     acceptLocaleConstructor('DateTimeFormat');
     acceptLocaleConstructor('Collator');
-    acceptLocale(Number.prototype, 'toLocaleString', 0);
-    if (typeof BigInt === 'function') acceptLocale(BigInt.prototype, 'toLocaleString', 0);
     acceptLocale(Date.prototype, 'toLocaleString', 0);
     acceptLocale(Date.prototype, 'toLocaleDateString', 0);
     acceptLocale(Date.prototype, 'toLocaleTimeString', 0);

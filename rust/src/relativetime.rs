@@ -2,13 +2,11 @@
 //! each carries plural rules + decimal symbols, so eight up front would cost eight data loads.
 
 use crate::parts;
+use crate::plural::Data;
 use fixed_decimal::{Decimal, UnsignedRoundingMode};
-use icu::decimal::provider::{DecimalDigitsV1, DecimalSymbolsV1};
 use icu::decimal::DecimalFormatter;
 use icu::locale::Locale;
-use icu::plurals::provider::PluralsCardinalV1;
 use icu_experimental::relativetime::options::Numeric;
-use icu_experimental::relativetime::provider::*;
 use icu_experimental::relativetime::{RelativeTimeFormatter as F, RelativeTimeFormatterOptions};
 use icu_provider::prelude::*;
 use std::sync::OnceLock;
@@ -18,37 +16,6 @@ type Ctor = fn(
     icu_experimental::relativetime::RelativeTimeFormatterPreferences,
     RelativeTimeFormatterOptions,
 ) -> Result<F, DataError>;
-
-/// The compiled data, except that plural rules are read for `plurals` (see plural::data_locale):
-/// the formatter would otherwise take them from the pattern's locale, root's for sr-Latn.
-struct Data {
-    plurals: DataLocale,
-}
-
-impl DataProvider<PluralsCardinalV1> for Data {
-    fn load(&self, req: DataRequest) -> Result<DataResponse<PluralsCardinalV1>, DataError> {
-        let id = DataIdentifierBorrowed::for_locale(&self.plurals);
-        icu::plurals::provider::Baked.load(DataRequest { id, ..req })
-    }
-}
-
-macro_rules! forward {
-    ($baked:path: $($marker:ident),+) => {
-        $(impl DataProvider<$marker> for Data {
-            fn load(&self, req: DataRequest) -> Result<DataResponse<$marker>, DataError> {
-                $baked.load(req)
-            }
-        })+
-    };
-}
-forward!(icu::decimal::provider::Baked: DecimalSymbolsV1, DecimalDigitsV1);
-forward!(icu_experimental::provider::Baked:
-    LongSecondRelativeV1, LongMinuteRelativeV1, LongHourRelativeV1, LongDayRelativeV1,
-    LongWeekRelativeV1, LongMonthRelativeV1, LongQuarterRelativeV1, LongYearRelativeV1,
-    ShortSecondRelativeV1, ShortMinuteRelativeV1, ShortHourRelativeV1, ShortDayRelativeV1,
-    ShortWeekRelativeV1, ShortMonthRelativeV1, ShortQuarterRelativeV1, ShortYearRelativeV1,
-    NarrowSecondRelativeV1, NarrowMinuteRelativeV1, NarrowHourRelativeV1, NarrowDayRelativeV1,
-    NarrowWeekRelativeV1, NarrowMonthRelativeV1, NarrowQuarterRelativeV1, NarrowYearRelativeV1);
 
 // [style][unit], units in spec order: second minute hour day week month quarter year.
 const CTORS: [[Ctor; 8]; 3] = [
@@ -119,9 +86,7 @@ impl RelativeTimeFormat {
             }
             _ => None,
         };
-        let data = Data {
-            plurals: DataLocale::from(&crate::plural::data_locale(&locale, false)),
-        };
+        let data = Data::new(&locale);
         Some(Self {
             root_symbols,
             data,
@@ -200,7 +165,12 @@ impl RelativeTimeFormat {
     fn split_number(&self, text: String, mut d: Decimal) -> Vec<(u8, String)> {
         d.sign = fixed_decimal::Sign::None;
         let Some(df) = self.decimal.get_or_init(|| {
-            DecimalFormatter::try_new((&self.locale).into(), Default::default()).ok()
+            DecimalFormatter::try_new_unstable(
+                &self.data,
+                (&self.locale).into(),
+                Default::default(),
+            )
+            .ok()
         }) else {
             return vec![(parts::LITERAL, text)];
         };

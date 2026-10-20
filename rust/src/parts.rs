@@ -11,6 +11,25 @@ pub const GROUP: u8 = 2;
 pub const DECIMAL: u8 = 3;
 pub const FRACTION: u8 = 4;
 pub const ELEMENT: u8 = 5;
+pub const MINUS_SIGN: u8 = 6;
+pub const UNIT: u8 = 7;
+pub const PLUS_SIGN: u8 = 8;
+pub const PERCENT_SIGN: u8 = 9;
+pub const CURRENCY: u8 = 10;
+pub const COMPACT: u8 = 11;
+pub const EXPONENT_SEPARATOR: u8 = 12;
+pub const EXPONENT_MINUS_SIGN: u8 = 13;
+pub const EXPONENT_INTEGER: u8 = 14;
+pub const NAN: u8 = 15;
+pub const INFINITY: u8 = 16;
+pub const APPROXIMATELY_SIGN: u8 = 17;
+// formatRangeToParts sources, in bits 5 and 6.
+pub const START_RANGE: u8 = 1 << 5;
+pub const END_RANGE: u8 = 2 << 5;
+pub const SHARED: u8 = 3 << 5;
+
+/// A part: its kind and text.
+pub type Seg = (u8, String);
 
 fn kind(p: &Part) -> Option<u8> {
     use icu::decimal::parts as d;
@@ -19,6 +38,8 @@ fn kind(p: &Part) -> Option<u8> {
         d::GROUP => GROUP,
         d::DECIMAL => DECIMAL,
         d::FRACTION => FRACTION,
+        d::MINUS_SIGN => MINUS_SIGN,
+        d::PLUS_SIGN => PLUS_SIGN,
         icu::list::parts::ELEMENT => ELEMENT,
         _ => return None, // literals and containers
     })
