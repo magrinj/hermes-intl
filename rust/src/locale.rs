@@ -169,6 +169,31 @@ pub fn lookup(requested: &str) -> Option<String> {
     }
 }
 
+/// The tags to look data up by, before truncation: the tag, then, when its region implies another
+/// script than its language's ("zh-TW"), the tag with that script and the language with it
+/// ("zh-Hant-TW", "zh-Hant"), as ICU4X's own fallback goes.
+pub fn with_implied_script(tag: &str) -> Vec<String> {
+    let mut out = vec![tag.to_owned()];
+    let Ok(loc) = tag.parse::<Locale>() else {
+        return out;
+    };
+    if loc.id.script.is_some() || loc.id.region.is_none() {
+        return out;
+    }
+    let mut full = loc.id.clone();
+    expander().maximize(&mut full);
+    let mut lang = icu::locale::LanguageIdentifier::from(loc.id.language);
+    expander().maximize(&mut lang);
+    if let (Some(script), Some(region)) = (
+        full.script.filter(|s| Some(*s) != lang.script),
+        loc.id.region,
+    ) {
+        out.push(format!("{}-{script}-{region}", loc.id.language));
+        out.push(format!("{}-{script}", loc.id.language));
+    }
+    out
+}
+
 /// DefaultLocale: the host locale if declared (or a prefix of it), else the first declared.
 pub fn default_locale(host: &str) -> String {
     // Device locales are plain tags; skip building the alias canonicalizer at startup unless needed.
@@ -263,25 +288,9 @@ pub fn default_numbering_system(tag: &str) -> String {
     .unwrap_or_else(|_| "latn".into())
 }
 
-/// Whether digits exist for numbering system `nu` (data is keyed by `nu` alone).
+/// Whether digits exist for numbering system `nu`.
 pub fn numbering_system_supported(nu: &str) -> bool {
-    use icu::decimal::provider::{Baked, DecimalDigitsV1};
-    use icu_provider::prelude::*;
-    let Ok(attrs) = DataMarkerAttributes::try_from_str(nu) else {
-        return false;
-    };
-    DataProvider::<DecimalDigitsV1>::load(
-        &Baked,
-        DataRequest {
-            id: DataIdentifierBorrowed::for_marker_attributes(attrs),
-            metadata: {
-                let mut m = DataRequestMetadata::default();
-                m.silent = true;
-                m
-            },
-        },
-    )
-    .is_ok()
+    crate::number::digits(nu).is_some()
 }
 
 /// Canonical IANA zones in use in `region` (ISO 3166 alpha-2), sorted, space-separated.

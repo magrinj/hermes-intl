@@ -4,6 +4,9 @@
 
 pub mod list;
 pub mod locale;
+pub mod number;
+#[rustfmt::skip]
+mod number_data;
 pub mod parts;
 pub mod plural;
 pub mod relativetime;
@@ -200,6 +203,81 @@ pub unsafe extern "C" fn hi_rtf_format(
     } else {
         f.format(value, unit)
     })
+}
+
+#[cfg(target_vendor = "apple")]
+unsafe fn value(n: &HiNumber) -> number::Value {
+    match decimal(n) {
+        Some(d) => number::Value::Finite(d),
+        None if n.f.is_nan() => number::Value::NaN,
+        None => number::Value::Infinity(n.f < 0.0),
+    }
+}
+
+// Intl.NumberFormat replaces Hermes's own only on Apple platforms (js/bootstrap.js).
+
+/// ISO 4217 minor unit digits; 2 for an unknown code.
+#[cfg(target_vendor = "apple")]
+#[no_mangle]
+pub unsafe extern "C" fn hi_currency_digits(code: *const c_char, len: usize) -> u8 {
+    number::currency_digits(str(code, len))
+}
+
+/// `unit`: a sanctioned unit or two joined by "-per-" (style unit). Null if the locale has no data.
+#[cfg(target_vendor = "apple")]
+#[no_mangle]
+pub unsafe extern "C" fn hi_nf_new(
+    locale: *const c_char,
+    len: usize,
+    o: *const number::NumberOptions,
+    unit: *const c_char,
+    unit_len: usize,
+) -> *mut number::NumberFormat {
+    number::NumberFormat::new(str(locale, len), *o, str(unit, unit_len))
+        .map_or(core::ptr::null_mut(), |f| Box::into_raw(Box::new(f)))
+}
+
+#[cfg(target_vendor = "apple")]
+#[no_mangle]
+pub unsafe extern "C" fn hi_nf_free(f: *mut number::NumberFormat) {
+    if !f.is_null() {
+        drop(Box::from_raw(f));
+    }
+}
+
+/// `packed` = formatToParts encoding (parts.rs).
+#[cfg(target_vendor = "apple")]
+#[no_mangle]
+pub unsafe extern "C" fn hi_nf_format(
+    f: *const number::NumberFormat,
+    x: *const HiNumber,
+    packed: bool,
+) -> HiStr {
+    owned((*f).format(&value(&*x)).map(|s| join(s, packed)))
+}
+
+/// `x` and `y` not NaN. `packed` = formatRangeToParts encoding, sources in bits 5 and 6.
+#[cfg(target_vendor = "apple")]
+#[no_mangle]
+pub unsafe extern "C" fn hi_nf_format_range(
+    f: *const number::NumberFormat,
+    x: *const HiNumber,
+    y: *const HiNumber,
+    packed: bool,
+) -> HiStr {
+    owned(
+        (*f).format_range(&value(&*x), &value(&*y))
+            .map(|s| join(s, packed)),
+    )
+}
+
+#[cfg(target_vendor = "apple")]
+fn join(segs: Vec<parts::Seg>, packed: bool) -> String {
+    if packed {
+        parts::pack(&segs)
+    } else {
+        segs.into_iter().map(|s| s.1).collect()
+    }
 }
 
 /// `kind`: 0 conjunction, 1 disjunction, 2 unit; `style`: 0 long, 1 short, 2 narrow.

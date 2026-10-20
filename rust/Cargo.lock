@@ -65,7 +65,9 @@ dependencies = [
  "icu_experimental",
  "icu_locale_core",
  "icu_provider",
+ "tinystr",
  "writeable",
+ "zerovec",
 ]
 
 [[package]]
