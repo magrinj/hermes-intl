@@ -7,6 +7,6 @@ test/intl402/PluralRules/prototype/resolvedOptions/plural-categories-order.js
 # DateTimeFormat leaves numberingSystem out of resolvedOptions.
 test/intl402/Intl/supportedValuesOf/collations-accepted-by-Collator.js
 test/intl402/Intl/supportedValuesOf/numberingSystems-accepted-by-DateTimeFormat.js
-# Need Intl.DisplayNames.
-test/intl402/Intl/supportedValuesOf/calendars-accepted-by-DisplayNames.js
+# DisplayNames names 145 historic currencies (ADP, BEF...) that supportedValuesOf leaves out, as V8
+# does: it lists the 162 in use.
 test/intl402/Intl/supportedValuesOf/currencies-accepted-by-DisplayNames.js

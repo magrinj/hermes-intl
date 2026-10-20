@@ -2,6 +2,9 @@
 //! their lengths (or null with length 0) and handles from the matching `*_new`, freed once.
 #![allow(clippy::missing_safety_doc)]
 
+pub mod displaynames;
+#[rustfmt::skip]
+mod displaynames_data;
 pub mod list;
 pub mod locale;
 pub mod number;
@@ -13,6 +16,7 @@ pub mod relativetime;
 pub mod segmenter;
 
 use core::ffi::c_char;
+use displaynames::DisplayNames;
 use icu::list::ListFormatter;
 use plural::{Options, Rules};
 use relativetime::RelativeTimeFormat;
@@ -292,6 +296,37 @@ fn join(segs: Vec<parts::Seg>, packed: bool) -> String {
     } else {
         segs.into_iter().map(|s| s.1).collect()
     }
+}
+
+/// `kind`: 0 language, 1 region, 2 script, 3 currency, 4 calendar, 5 dateTimeField; `style`: 0 long,
+/// 1 short, 2 narrow; `dialect` for languages. Null if the locale has no data.
+#[no_mangle]
+pub unsafe extern "C" fn hi_dn_new(
+    locale: *const c_char,
+    len: usize,
+    kind: u8,
+    style: u8,
+    dialect: bool,
+) -> *mut DisplayNames {
+    DisplayNames::new(str(locale, len), kind, style, dialect)
+        .map_or(core::ptr::null_mut(), |d| Box::into_raw(Box::new(d)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn hi_dn_free(d: *mut DisplayNames) {
+    if !d.is_null() {
+        drop(Box::from_raw(d));
+    }
+}
+
+/// The name for a canonical code; null if there is none.
+#[no_mangle]
+pub unsafe extern "C" fn hi_dn_of(
+    d: *const DisplayNames,
+    code: *const c_char,
+    len: usize,
+) -> HiStr {
+    owned((*d).of(str(code, len)))
 }
 
 /// `kind`: 0 conjunction, 1 disjunction, 2 unit; `style`: 0 long, 1 short, 2 narrow.

@@ -66,6 +66,7 @@ dependencies = [
  "icu_locale_core",
  "icu_provider",
  "icu_segmenter",
+ "potential_utf",
  "tinystr",
  "writeable",
  "zerovec",

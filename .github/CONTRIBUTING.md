@@ -69,7 +69,7 @@ git remote add origin https://github.com/tc39/test262
 git sparse-checkout set harness test/intl402/PluralRules test/intl402/RelativeTimeFormat \
   test/intl402/ListFormat test/intl402/Locale test/intl402/Intl/getCanonicalLocales \
   test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt test/intl402/Intl/supportedValuesOf
-  test/intl402/Segmenter
+  test/intl402/Segmenter test/intl402/DisplayNames
 git fetch -q --depth 1 --filter=blob:none origin 7ab7fafa0003f73fc85c1b95d88094d33f7eb8bd && git checkout -q FETCH_HEAD
 cd ../..
 
@@ -102,6 +102,8 @@ bun run prebuilt
 - `scripts/notices.sh`: regenerates `THIRD_PARTY_NOTICES.md` after changing Rust dependencies.
 - `scripts/number-data.mjs`: regenerates `rust/src/number_data.rs`, the unit patterns and number
   symbols `Intl.NumberFormat` takes from CLDR JSON (usage in the script).
+- `scripts/displaynames-data.mjs`: regenerates `rust/src/displaynames_data.rs`, the calendar and
+  date-time field names ICU4X lacks, from CLDR JSON (usage in the script).
 - `bench/charts.mjs`: regenerates the README charts after updating the numbers it holds.
 - `example/scripts/build-android.sh`, `build-ios-sim.sh`: the two demo builds side by side (see
   [example/README.md](../example/README.md)).
