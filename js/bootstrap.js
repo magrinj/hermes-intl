@@ -1,6 +1,8 @@
 // Spec shell for the Intl constructors Hermes lacks; data comes from `native.*`. Intrinsics are
 // captured up front so built-ins patched later cannot change behaviour (test262 "tainting").
 module.exports = function (native, global) {
+  // Also a worklet, under react-native-worklets' Babel plugin (src/index.js installOnWorkletRuntime).
+  'worklet';
   'use strict';
 
   var Intl = global.Intl;

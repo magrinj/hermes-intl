@@ -43,7 +43,13 @@
   "author": "Jérémy Magrin <contact@magrin.fr> (magrinj)",
   "license": "MIT",
   "peerDependencies": {
-    "react-native": ">=0.86"
+    "react-native": ">=0.86",
+    "react-native-worklets": ">=0.13"
+  },
+  "peerDependenciesMeta": {
+    "react-native-worklets": {
+      "optional": true
+    }
   },
   "codegenConfig": {
     "name": "HermesIntlSpec",

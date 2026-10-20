@@ -7,3 +7,8 @@ test('the entry loads in plain Node and leaves Intl alone', () => {
   require('../src/index.js');
   assert.strictEqual(Intl.PluralRules, pluralRules);
 });
+
+test('installOnWorkletRuntime does nothing off Hermes', () => {
+  const { installOnWorkletRuntime } = require('../src/index.js');
+  assert.strictEqual(installOnWorkletRuntime(), undefined);
+});

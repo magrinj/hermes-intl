@@ -3,6 +3,7 @@
 #include "hermes_intl_core.h"
 
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 using namespace facebook::jsi;
@@ -54,8 +55,31 @@ HiNumber toNumber(Runtime &rt, const Value &v, std::string &storage) {
   return {0, storage.data(), storage.size()};
 }
 
-void def(Runtime &rt, Object &o, const char *name, unsigned length, HostFunctionType f) {
-  o.setProperty(rt, name, Function::createFromHostFunction(rt, PropNameID::forAscii(rt, name), length, std::move(f)));
+// The host functions as a HostObject: react-native-worklets passes HostObjects to its runtimes by
+// reference, and each function is made in the runtime that reads it. Read-only once built, so
+// safe to read from any runtime's thread.
+struct Native : HostObject {
+  std::string defaultLocale;
+  std::unordered_map<std::string, std::pair<unsigned, HostFunctionType>> functions;
+
+  Value get(Runtime &rt, const PropNameID &name) override {
+    std::string n = name.utf8(rt);
+    if (n == "defaultLocale") return String::createFromUtf8(rt, defaultLocale);
+    auto f = functions.find(n);
+    if (f == functions.end()) return Value::undefined();
+    return Function::createFromHostFunction(rt, name, f->second.first, f->second.second);
+  }
+
+  std::vector<PropNameID> getPropertyNames(Runtime &rt) override {
+    std::vector<PropNameID> names;
+    names.push_back(PropNameID::forAscii(rt, "defaultLocale"));
+    for (auto &f : functions) names.push_back(PropNameID::forUtf8(rt, f.first));
+    return names;
+  }
+};
+
+void def(Runtime &, Native &o, const char *name, unsigned length, HostFunctionType f) {
+  o.functions.emplace(name, std::make_pair(length, std::move(f)));
 }
 
 uint8_t u8(const Value &v) { return static_cast<uint8_t>(v.getNumber()); }
@@ -63,7 +87,8 @@ uint8_t u8(const Value &v) { return static_cast<uint8_t>(v.getNumber()); }
 } // namespace
 
 Object createNative(Runtime &rt, const std::string &hostLocale) {
-  Object native(rt);
+  auto host = std::make_shared<Native>();
+  Native &native = *host;
 
   def(rt, native, "canonicalize", 1, [](Runtime &rt, const Value &, const Value *a, size_t) {
     return tagCall(rt, hi_canonicalize, a[0]);
@@ -71,7 +96,9 @@ Object createNative(Runtime &rt, const std::string &hostLocale) {
   def(rt, native, "lookup", 1, [](Runtime &rt, const Value &, const Value *a, size_t) {
     return tagCall(rt, hi_lookup, a[0]);
   });
-  native.setProperty(rt, "defaultLocale", take(rt, hi_default_locale(hostLocale.data(), hostLocale.size())));
+  HiStr locale = hi_default_locale(hostLocale.data(), hostLocale.size());
+  native.defaultLocale.assign(locale.ptr, locale.len);
+  hi_str_free(locale);
 
   def(rt, native, "prNew", 12, [](Runtime &rt, const Value &, const Value *a, size_t) {
     std::string locale = a[0].getString(rt).utf8(rt);
@@ -149,7 +176,7 @@ Object createNative(Runtime &rt, const std::string &hostLocale) {
     return take(rt, hi_lf_format(unwrap<ListFormatState>(rt, a[0]), slices.data(), n, a[2].getBool()));
   });
 
-  return native;
+  return Object::createFromHostObject(rt, host);
 }
 
 } // namespace hermes_intl
