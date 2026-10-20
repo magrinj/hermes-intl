@@ -319,6 +319,22 @@ pub fn time_zones(region: &str) -> String {
     zones.join(" ")
 }
 
+/// AvailableNamedTimeZoneIdentifiers: the primary IANA ids, sorted, space-separated.
+pub fn all_time_zones() -> String {
+    let mut zones: Vec<&str> = icu::time::zone::iana::IanaParserExtended::new()
+        .iter()
+        .map(|z| match z.canonical {
+            "Etc/UTC" | "Etc/GMT" => "UTC",
+            c => c,
+        })
+        // Links since tzdb 2024b (to America/Chicago...), still zones of their own in ICU4X's data.
+        .filter(|z| !matches!(*z, "CST6CDT" | "EST5EDT" | "MST7MDT" | "PST8PDT"))
+        .collect();
+    zones.sort_unstable();
+    zones.dedup();
+    zones.join(" ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -339,6 +355,11 @@ mod tests {
         assert_eq!(default_numbering_system("ar-EG"), "arab");
         assert_eq!(default_numbering_system("en"), "latn");
         assert!(numbering_system_supported("thai") && !numbering_system_supported("wxyz"));
+        assert!(numbering_system_supported("tols"));
+        let all = all_time_zones();
+        assert!(all.contains("Europe/Paris") && all.contains("Etc/GMT+1"));
+        assert!(all.split(' ').any(|z| z == "UTC") && !all.contains("Etc/UTC"));
+        assert!(!all.contains("PST8PDT"));
         assert!(time_zones("FR").contains("Europe/Paris"));
         assert_eq!(time_zones("IL"), "Asia/Jerusalem");
         assert_eq!(time_zones("GM"), "Africa/Banjul");

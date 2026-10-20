@@ -23,9 +23,9 @@ Hermes's own. A drop-in replacement for the [FormatJS](https://formatjs.github.i
   the FormatJS polyfills.
   Screens that format dates and counts open about twice as fast, and the worst frame of a fast
   scroll is half as long.
-- **Correct, and the same everywhere.** It passes test262 for these APIs (1 known failure) and gives
-  byte-identical output on iOS and Android. FormatJS output depends on the platform, and its
-  plurals for decimals are wrong in some languages.
+- **Correct, and the same everywhere.** It passes test262 for these APIs (known failures come from
+  Hermes's own `Intl`) and gives byte-identical output on iOS and Android. FormatJS output depends
+  on the platform, and its plurals for decimals are wrong in some languages.
 - **Drop-in.** It installs the standard `Intl` constructors, so code and libraries that use them
   (i18next, react-intl, Luxon) pick it up without changes. The app ships ~400 KB less JavaScript
   and 1.0 to 1.7 MB more native code per Android ABI, 3.6 MB on iOS.
@@ -108,16 +108,19 @@ installOnWorkletRuntime(runtime); // one from createWorkletRuntime
 | API | Notes |
 | --- | --- |
 | `Intl.PluralRules` | `select`, `selectRange`, `resolvedOptions`; all digit options, `notation` (incl. compact) |
-| `Intl.RelativeTimeFormat` | `format`, `formatToParts`, `numeric: "auto"`, `-u-nu-` numbering systems |
+| `Intl.RelativeTimeFormat` | `format`, `formatToParts`, `numeric: "auto"`, every numbering system with simple digits (`-u-nu-`) |
 | `Intl.ListFormat` | conjunction / disjunction / unit, long / short / narrow, `formatToParts` |
 | `Intl.Locale` | all getters, `maximize`, `minimize`, and the Locale Info methods (`getWeekInfo`, `getTextInfo`, `getCalendars`, `getHourCycles`, `getNumberingSystems`, `getTimeZones`, `getCollations`) |
 | `Intl.getCanonicalLocales` | replaced so it accepts `Intl.Locale` objects |
+| `Intl.supportedValuesOf` | calendars, collations, currencies, numbering systems, time zones and units; the values Hermes's own constructors take are checked on first use |
 | `Intl.NumberFormat`, `Number` and `BigInt` `toLocaleString` | on iOS, replaced: Hermes's own there has no `formatToParts` and ignores compact notation, `signDisplay`, `roundingMode` and `-u-nu-`. Every option, `formatToParts`, `formatRange`, `formatRangeToParts`. On Android, Hermes's own, wrapped so it accepts an `Intl.Locale` object |
 | `Intl.DateTimeFormat`, `Collator`, `Date` `toLocale*String`, `localeCompare` | Hermes's own, wrapped so they accept an `Intl.Locale` object as the locale |
 
 Each constructor is installed only if Hermes lacks it. On other engines (JSC, web) the import does
-nothing. Conformance: 1,376 of 1,378 test262 `intl402` runs pass for these APIs (each test runs in
-sloppy and strict mode). The 2 others are 1 known failure: a locale outside the shipped set.
+nothing. Conformance: 1,416 of 1,426 test262 `intl402` runs pass for these APIs (each test runs in
+sloppy and strict mode). The 10 others are 5 known failures: 2 where a test checks Hermes's own
+`DateTimeFormat` or `Collator`, 2 that need `Intl.DisplayNames`, and a locale outside the shipped
+set.
 
 ## Locales and size
 
@@ -136,7 +139,7 @@ see [CONTRIBUTING.md](.github/CONTRIBUTING.md#custom-locale-set).
 ## Not included (yet)
 
 - `Intl.DateTimeFormat` and `Collator` replacements: Hermes's own are kept.
-- `DisplayNames`, `Segmenter`, `DurationFormat`, `supportedValuesOf`.
+- `DisplayNames`, `Segmenter`, `DurationFormat`.
 
 ## Differences from V8 worth knowing
 

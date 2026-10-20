@@ -12,8 +12,8 @@ const list = (meta, key) => {
   return m[1].includes('- ') && !m[0].includes('[') ? m[1].split('\n').map((l) => l.replace(/^\s*-\s*/, '').trim()).filter(Boolean) : m[1].split(',').map((s) => s.trim()).filter(Boolean);
 };
 
-// The host is a bare Hermes runtime: no $262.createRealm.
-const UNSUPPORTED = ['cross-realm'];
+// The host is a bare Hermes runtime: no $262.createRealm, and Hermes has no Temporal.
+const UNSUPPORTED = ['cross-realm', 'Intl.Era-monthcode'];
 const EXPECTED = new Set(readFileSync(new URL('./test262-expected-failures.txt', import.meta.url), 'utf8')
   .split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')));
 let pass = 0;

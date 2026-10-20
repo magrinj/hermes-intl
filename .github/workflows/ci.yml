@@ -80,7 +80,7 @@ jobs:
           git remote add origin https://github.com/tc39/test262
           git sparse-checkout set harness test/intl402/PluralRules test/intl402/RelativeTimeFormat \
             test/intl402/ListFormat test/intl402/Locale test/intl402/Intl/getCanonicalLocales \
-            test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt
+            test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt test/intl402/Intl/supportedValuesOf
           git fetch -q --depth 1 --filter=blob:none origin "$TEST262_SHA" && git checkout -q FETCH_HEAD
       - run: scripts/test262.sh
       - run: scripts/corpus.sh

@@ -56,6 +56,10 @@ HiStr hi_locale_numbering_system(const char *tag, size_t len);
 bool hi_numbering_system_supported(const char *nu, size_t len);
 HiStr hi_region_time_zones(const char *region, size_t len);  // space-separated
 
+// Intl.supportedValuesOf, space-separated and sorted.
+HiStr hi_time_zones(void);
+HiStr hi_numbering_systems(void);
+
 // Intl.RelativeTimeFormat. style 0 long, 1 short, 2 narrow; unit 0 second .. 7 year.
 // packed = formatToParts encoding (rust/src/parts.rs).
 typedef struct HiRelativeTimeFormat HiRelativeTimeFormat;

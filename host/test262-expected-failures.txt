@@ -3,3 +3,10 @@
 
 # "gv" (Manx) is not in ICU4X's recommended locale set that the prebuilt binaries ship.
 test/intl402/PluralRules/prototype/resolvedOptions/plural-categories-order.js
+# Hermes's own Intl on Apple platforms: Collator echoes any collation ("search", "standard"), and
+# DateTimeFormat leaves numberingSystem out of resolvedOptions.
+test/intl402/Intl/supportedValuesOf/collations-accepted-by-Collator.js
+test/intl402/Intl/supportedValuesOf/numberingSystems-accepted-by-DateTimeFormat.js
+# Need Intl.DisplayNames.
+test/intl402/Intl/supportedValuesOf/calendars-accepted-by-DisplayNames.js
+test/intl402/Intl/supportedValuesOf/currencies-accepted-by-DisplayNames.js

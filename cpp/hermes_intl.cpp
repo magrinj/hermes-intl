@@ -154,6 +154,14 @@ Object createNative(Runtime &rt, const std::string &hostLocale) {
     return Value(hi_numbering_system_supported(t.data(), t.size()));
   });
 
+  // Intl.supportedValuesOf
+  def(rt, native, "timeZones", 0, [](Runtime &rt, const Value &, const Value *, size_t) {
+    return take(rt, hi_time_zones());
+  });
+  def(rt, native, "numberingSystems", 0, [](Runtime &rt, const Value &, const Value *, size_t) {
+    return take(rt, hi_numbering_systems());
+  });
+
   // Intl.RelativeTimeFormat
   def(rt, native, "rtfNew", 3, [](Runtime &rt, const Value &, const Value *a, size_t) {
     std::string locale = a[0].getString(rt).utf8(rt);

@@ -68,7 +68,7 @@ git init -q vendor/test262 && cd vendor/test262
 git remote add origin https://github.com/tc39/test262
 git sparse-checkout set harness test/intl402/PluralRules test/intl402/RelativeTimeFormat \
   test/intl402/ListFormat test/intl402/Locale test/intl402/Intl/getCanonicalLocales \
-  test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt
+  test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt test/intl402/Intl/supportedValuesOf
 git fetch -q --depth 1 --filter=blob:none origin 7ab7fafa0003f73fc85c1b95d88094d33f7eb8bd && git checkout -q FETCH_HEAD
 cd ../..
 
