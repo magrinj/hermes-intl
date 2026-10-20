@@ -25,6 +25,7 @@ using ListFormatState = Owned<HiListFormat, hi_lf_free>;
 using NumberFormatState = Owned<HiNumberFormat, hi_nf_free>;
 #endif
 using SegmenterState = Owned<HiSegmenter, hi_seg_free>;
+using DisplayNamesState = Owned<HiDisplayNames, hi_dn_free>;
 
 template <class S>
 Value handleFor(Runtime &rt, decltype(S::ptr) p, const char *what) {
@@ -250,6 +251,17 @@ Object createNative(Runtime &rt, const std::string &hostLocale) {
     std::u16string text = a[1].getString(rt).utf16(rt);
     HiU32s ends = hi_seg_breaks(unwrap<SegmenterState>(rt, a[0]), reinterpret_cast<const uint16_t *>(text.data()), text.size());
     return ArrayBuffer(rt, std::make_shared<U32Buffer>(ends));
+  });
+
+  // Intl.DisplayNames
+  def(rt, native, "dnNew", 4, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string locale = a[0].getString(rt).utf8(rt);
+    return handleFor<DisplayNamesState>(
+        rt, hi_dn_new(locale.data(), locale.size(), u8(a[1]), u8(a[2]), a[3].getBool()), "Intl.DisplayNames");
+  });
+  def(rt, native, "dnOf", 2, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string code = a[1].getString(rt).utf8(rt);
+    return take(rt, hi_dn_of(unwrap<DisplayNamesState>(rt, a[0]), code.data(), code.size()));
   });
 
   return Object::createFromHostObject(rt, host);

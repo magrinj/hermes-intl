@@ -183,9 +183,10 @@ at `7ab7fafa` (`scripts/test262.sh`, run in CI). Each test runs in sloppy and st
 | `intl402/Locale` (incl. Locale Info) | 344 | 0 | 1 |
 | `intl402/Intl/getCanonicalLocales` | 76 | 0 | 0 |
 | `intl402/NumberFormat`, `Number`, `BigInt` (iOS's NumberFormat) | 536 | 0 | 1 |
-| `intl402/Intl/supportedValuesOf` | 40 | 8 | 1 |
+| `intl402/Intl/supportedValuesOf` | 42 | 6 | 1 |
 | `intl402/Segmenter` | 154 | 0 | 2 |
-| **Total** | **1,570** runs | **10** runs | **8** files |
+| `intl402/DisplayNames` | 112 | 0 | 1 |
+| **Total** | **1,684** runs | **8** runs | **9** files |
 
 - Skipped: `proto-from-ctor-realm.js` in each folder needs `$262.createRealm`, and
   `calendars-required-by-intl-era-monthcode.js` needs Temporal.
@@ -194,7 +195,8 @@ at `7ab7fafa` (`scripts/test262.sh`, run in CI). Each test runs in sloppy and st
     not in the recommended locale set.
   - `Intl/supportedValuesOf`: 2 tests check Hermes's own constructors on Apple platforms, whose
     `Collator` echoes any collation and whose `DateTimeFormat` leaves `numberingSystem` out of
-    `resolvedOptions`. 2 more need `Intl.DisplayNames`.
+    `resolvedOptions`. In a third, `DisplayNames` names 145 historic currencies that
+    `supportedValuesOf` leaves out, as V8 does.
 
 ## Correctness against V8
 

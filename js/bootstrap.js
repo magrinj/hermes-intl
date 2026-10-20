@@ -1015,6 +1015,71 @@ module.exports = function (native, global) {
     },
   };
   installConstructor('Segmenter', Segmenter, segmenterMethods, { supportedLocalesOf: supportedLocalesOf });
+  var dnNew = native.dnNew;
+  var dnName = native.dnOf;
+  var DN_TYPES = ['language', 'region', 'script', 'currency', 'calendar', 'dateTimeField'];
+  var DATE_TIME_FIELDS = ['era', 'year', 'quarter', 'month', 'weekOfYear', 'weekday', 'day', 'dayPeriod', 'hour', 'minute', 'second', 'timeZoneName'];
+  var dnSlots = new WeakMap();
+  var dnOf = slotsOf(WeakMap.prototype.get.bind(dnSlots), 'DisplayNames');
+  var setDnSlots = WeakMap.prototype.set.bind(dnSlots);
+  // unicode_language_id in BCP 47 syntax: no "root", no leading script.
+  var isLanguageId = tester(/^([a-z]{2,3}|[a-z]{5,8})(-[a-z]{4})?(-([a-z]{2}|[0-9]{3}))?(-([a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*$/i);
+  var isCurrency = tester(/^[a-z]{3}$/i);
+
+  function DisplayNames(locales, options) {
+    var self = this;
+    construct(self, new.target, DisplayNames, 'DisplayNames');
+    var requested = canonicalizeLocaleList(locales);
+    options = getOptionsObject(options);
+    getOption(options, 'localeMatcher', ['lookup', 'best fit'], 'best fit');
+    var s = create(null);
+    s.locale = resolveLocale(requested).locale;
+    s.style = getOption(options, 'style', STYLES, 'long');
+    s.type = getOption(options, 'type', DN_TYPES, undefined);
+    if (s.type === undefined) throw new TypeError('Intl.DisplayNames requires a type');
+    s.fallback = getOption(options, 'fallback', ['code', 'none'], 'code');
+    var languageDisplay = getOption(options, 'languageDisplay', ['dialect', 'standard'], 'dialect');
+    if (s.type === 'language') s.languageDisplay = languageDisplay;
+    s.handle = dnNew(s.locale, indexOf(DN_TYPES, s.type), indexOf(STYLES, s.style), languageDisplay === 'dialect');
+    setDnSlots(self, s);
+  }
+
+  // CanonicalCodeForDisplayNames.
+  function canonicalCode(type, code) {
+    var c;
+    if (type === 'language') {
+      if (isLanguageId(code)) c = canonicalize(code);
+    } else if (type === 'region') {
+      if (isRegion(code)) c = toUpperCase(code);
+    } else if (type === 'script') {
+      if (isScript(code)) c = toUpperCase(slice(code, 0, 1)) + toLowerCase(slice(code, 1));
+    } else if (type === 'calendar') {
+      if (isType(code)) c = toLowerCase(code);
+    } else if (type === 'dateTimeField') {
+      if (indexOf(DATE_TIME_FIELDS, code) >= 0) c = code;
+    } else if (isCurrency(code)) {
+      c = toUpperCase(code);
+    }
+    if (c === undefined) throw new RangeError('Invalid code for Intl.DisplayNames: ' + code);
+    return c;
+  }
+
+  var dnMethods = {
+    of(code) {
+      var s = dnOf(this, 'of');
+      code = canonicalCode(s.type, toString(code));
+      var name = dnName(s.handle, code);
+      if (name !== undefined) return name;
+      return s.fallback === 'code' ? code : undefined;
+    },
+    resolvedOptions() {
+      var s = dnOf(this, 'resolvedOptions');
+      var o = { locale: s.locale, style: s.style, type: s.type, fallback: s.fallback, languageDisplay: s.languageDisplay };
+      if (s.languageDisplay === undefined) delete o.languageDisplay;
+      return o;
+    },
+  };
+  installConstructor('DisplayNames', DisplayNames, dnMethods, { supportedLocalesOf: supportedLocalesOf });
 
   var setLocaleSlots = WeakMap.prototype.set.bind(localeSlots);
   var localeOf = slotsOf(getLocaleSlots, 'Locale');

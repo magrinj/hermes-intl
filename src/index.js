@@ -1,5 +1,5 @@
 // Installs the Intl constructors Hermes lacks (PluralRules, RelativeTimeFormat, ListFormat,
-// Segmenter, Locale). Import it first in the app entry, before anything that uses Intl:
+// Segmenter, DisplayNames, Locale). Import it first in the app entry, before anything that uses Intl:
 //   import 'hermes-intl';
 // No-op on other engines (JSC, V8, web, Jest), which already ship these constructors.
 // Plain CommonJS, so Jest loads it without a transform.

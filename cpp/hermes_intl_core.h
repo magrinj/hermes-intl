@@ -97,6 +97,12 @@ HiSegmenter *hi_seg_new(const char *locale, size_t len, uint8_t granularity);
 void hi_seg_free(HiSegmenter *s);
 HiU32s hi_seg_breaks(const HiSegmenter *s, const uint16_t *text, size_t n);
 void hi_u32s_free(HiU32s a);
+// Intl.DisplayNames. kind 0 language, 1 region, 2 script, 3 currency, 4 calendar, 5 dateTimeField;
+// style 0 long, 1 short, 2 narrow. hi_dn_of: NULL when there is no name.
+typedef struct HiDisplayNames HiDisplayNames;
+HiDisplayNames *hi_dn_new(const char *locale, size_t len, uint8_t kind, uint8_t style, bool dialect);
+void hi_dn_free(HiDisplayNames *d);
+HiStr hi_dn_of(const HiDisplayNames *d, const char *code, size_t len);
 
 // Intl.ListFormat. kind 0 conjunction, 1 disjunction, 2 unit; style 0 long, 1 short, 2 narrow.
 typedef struct HiListFormat HiListFormat;
