@@ -86,6 +86,17 @@ HiNumberFormat *hi_nf_new(const char *locale, size_t len, const HiNumberOptions 
 void hi_nf_free(HiNumberFormat *f);
 HiStr hi_nf_format(const HiNumberFormat *f, const HiNumber *x, bool packed);
 HiStr hi_nf_format_range(const HiNumberFormat *f, const HiNumber *x, const HiNumber *y, bool packed);
+// Intl.Segmenter. granularity 0 grapheme, 1 word, 2 sentence. hi_seg_breaks: the end of each
+// segment of a UTF-16 string, with the word-like flag at bit 30.
+typedef struct HiSegmenter HiSegmenter;
+typedef struct {
+  uint32_t *ptr;
+  size_t len;
+} HiU32s;
+HiSegmenter *hi_seg_new(const char *locale, size_t len, uint8_t granularity);
+void hi_seg_free(HiSegmenter *s);
+HiU32s hi_seg_breaks(const HiSegmenter *s, const uint16_t *text, size_t n);
+void hi_u32s_free(HiU32s a);
 
 // Intl.ListFormat. kind 0 conjunction, 1 disjunction, 2 unit; style 0 long, 1 short, 2 narrow.
 typedef struct HiListFormat HiListFormat;

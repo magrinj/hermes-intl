@@ -1,5 +1,6 @@
-// Side-effect import: defines Intl.PluralRules, Intl.RelativeTimeFormat, Intl.ListFormat and
-// Intl.Locale on Hermes. Their types come from TypeScript's own lib (es2020.intl, es2021.intl).
+// Side-effect import: defines Intl.PluralRules, Intl.RelativeTimeFormat, Intl.ListFormat,
+// Intl.Segmenter and Intl.Locale on Hermes. Their types come from TypeScript's own lib
+// (es2020.intl, es2021.intl, es2022.intl).
 
 /**
  * Installs the same Intl constructors on a react-native-worklets runtime: the one given (from

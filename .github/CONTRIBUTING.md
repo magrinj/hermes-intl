@@ -69,6 +69,7 @@ git remote add origin https://github.com/tc39/test262
 git sparse-checkout set harness test/intl402/PluralRules test/intl402/RelativeTimeFormat \
   test/intl402/ListFormat test/intl402/Locale test/intl402/Intl/getCanonicalLocales \
   test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt test/intl402/Intl/supportedValuesOf
+  test/intl402/Segmenter
 git fetch -q --depth 1 --filter=blob:none origin 7ab7fafa0003f73fc85c1b95d88094d33f7eb8bd && git checkout -q FETCH_HEAD
 cd ../..
 
@@ -85,8 +86,8 @@ Android and iOS.
 
 ## Custom locale set
 
-The default build ships ICU4X's 514 recommended locales. For a smaller binary (about 0.6 MB per
-ABI for 5 locales), generate the data and rebuild:
+The default build ships ICU4X's 514 recommended locales. For a smaller binary, generate the data
+and rebuild (the word segmentation dictionaries and models do not depend on the locales):
 
 ```sh
 cargo install icu4x-datagen --version 2.3 --features unstable

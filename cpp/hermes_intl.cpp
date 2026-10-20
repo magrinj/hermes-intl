@@ -24,6 +24,7 @@ using ListFormatState = Owned<HiListFormat, hi_lf_free>;
 #ifdef __APPLE__
 using NumberFormatState = Owned<HiNumberFormat, hi_nf_free>;
 #endif
+using SegmenterState = Owned<HiSegmenter, hi_seg_free>;
 
 template <class S>
 Value handleFor(Runtime &rt, decltype(S::ptr) p, const char *what) {
@@ -37,6 +38,15 @@ template <class S>
 decltype(S::ptr) unwrap(Runtime &rt, const Value &handle) {
   return handle.getObject(rt).getNativeState<S>(rt)->ptr;
 }
+
+// A Rust-owned u32 array as the backing store of an ArrayBuffer.
+struct U32Buffer : MutableBuffer {
+  explicit U32Buffer(HiU32s a) : a(a) {}
+  ~U32Buffer() override { hi_u32s_free(a); }
+  size_t size() const override { return a.len * sizeof(uint32_t); }
+  uint8_t *data() override { return reinterpret_cast<uint8_t *>(a.ptr); }
+  HiU32s a;
+};
 
 // Takes ownership of a Rust string; undefined when it is empty-handed.
 Value take(Runtime &rt, HiStr s) {
@@ -230,6 +240,17 @@ Object createNative(Runtime &rt, const std::string &hostLocale) {
     return Value(static_cast<int>(hi_currency_digits(code.data(), code.size())));
   });
 #endif
+
+  // Intl.Segmenter
+  def(rt, native, "segNew", 2, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string locale = a[0].getString(rt).utf8(rt);
+    return handleFor<SegmenterState>(rt, hi_seg_new(locale.data(), locale.size(), u8(a[1])), "Intl.Segmenter");
+  });
+  def(rt, native, "segBreaks", 2, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::u16string text = a[1].getString(rt).utf16(rt);
+    HiU32s ends = hi_seg_breaks(unwrap<SegmenterState>(rt, a[0]), reinterpret_cast<const uint16_t *>(text.data()), text.size());
+    return ArrayBuffer(rt, std::make_shared<U32Buffer>(ends));
+  });
 
   return Object::createFromHostObject(rt, host);
 }

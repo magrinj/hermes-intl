@@ -184,7 +184,8 @@ at `7ab7fafa` (`scripts/test262.sh`, run in CI). Each test runs in sloppy and st
 | `intl402/Intl/getCanonicalLocales` | 76 | 0 | 0 |
 | `intl402/NumberFormat`, `Number`, `BigInt` (iOS's NumberFormat) | 536 | 0 | 1 |
 | `intl402/Intl/supportedValuesOf` | 40 | 8 | 1 |
-| **Total** | **1,416** runs | **10** runs | **6** files |
+| `intl402/Segmenter` | 154 | 0 | 2 |
+| **Total** | **1,570** runs | **10** runs | **8** files |
 
 - Skipped: `proto-from-ctor-realm.js` in each folder needs `$262.createRealm`, and
   `calendars-required-by-intl-era-monthcode.js` needs Temporal.

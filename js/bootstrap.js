@@ -908,6 +908,113 @@ module.exports = function (native, global) {
       }.toLocaleString, true);
     }
   }
+  var segNew = native.segNew;
+  var segBreaks = native.segBreaks;
+  var GRANULARITIES = ['grapheme', 'word', 'sentence'];
+  var segmenterSlots = new WeakMap();
+  var segmenterOf = slotsOf(WeakMap.prototype.get.bind(segmenterSlots), 'Segmenter');
+  var setSegmenterSlots = WeakMap.prototype.set.bind(segmenterSlots);
+  var segmentsSlots = new WeakMap();
+  var getSegmentsSlots = WeakMap.prototype.get.bind(segmentsSlots);
+  var setSegmentsSlots = WeakMap.prototype.set.bind(segmentsSlots);
+  var segmentIteratorSlots = new WeakMap();
+  var getSegmentIteratorSlots = WeakMap.prototype.get.bind(segmentIteratorSlots);
+  var setSegmentIteratorSlots = WeakMap.prototype.set.bind(segmentIteratorSlots);
+
+  function Segmenter() {
+    var self = this;
+    construct(self, new.target, Segmenter, 'Segmenter');
+    var requested = canonicalizeLocaleList(arguments[0]);
+    var options = getOptionsObject(arguments[1]);
+    getOption(options, 'localeMatcher', ['lookup', 'best fit'], 'best fit');
+    var s = create(null);
+    s.locale = resolveLocale(requested).locale;
+    s.granularity = getOption(options, 'granularity', GRANULARITIES, 'grapheme');
+    s.handle = segNew(s.locale, indexOf(GRANULARITIES, s.granularity));
+    setSegmenterSlots(self, s);
+  }
+
+  var Uint32Array_ = Uint32Array;
+  var typedArrayLength = getOwnPropertyDescriptor(getPrototypeOf(Uint32Array.prototype), 'length').get;
+
+  // The end of each segment, with the word-like flag at bit 30 (rust/src/segmenter.rs), for the
+  // whole string on first use.
+  function segmentEnds(seg) {
+    if (seg.ends === undefined) {
+      seg.ends = new Uint32Array_(segBreaks(seg.segmenter.handle, seg.string));
+      seg.count = call(typedArrayLength, seg.ends);
+    }
+    return seg.ends;
+  }
+
+  // CreateSegmentDataObject for segment i, which starts at `start`.
+  function segmentData(seg, i, start) {
+    var e = segmentEnds(seg)[i];
+    var segment = slice(seg.string, start, e & 0x3fffffff);
+    if (seg.segmenter.granularity !== 'word') return { segment: segment, index: start, input: seg.string };
+    return { segment: segment, index: start, input: seg.string, isWordLike: e >= 0x40000000 };
+  }
+
+  var segmentsOf = slotsOf(getSegmentsSlots, 'Segmenter.Segments');
+  var SegmentsPrototype = create(ObjectPrototype);
+  var IteratorPrototype = getPrototypeOf(arrayIteratorPrototype);
+  var SegmentIteratorPrototype = create(IteratorPrototype);
+  var segmentsMethods = {
+    containing(index) {
+      var seg = segmentsOf(this, 'containing');
+      var n = +index;
+      n = n !== n ? 0 : trunc(n);
+      if (n < 0 || n >= seg.string.length) return undefined;
+      // The first segment that ends after n.
+      var ends = segmentEnds(seg);
+      var lo = 0;
+      var hi = seg.count;
+      while (lo < hi) {
+        var mid = (lo + hi) >> 1;
+        if ((ends[mid] & 0x3fffffff) > n) hi = mid;
+        else lo = mid + 1;
+      }
+      return segmentData(seg, lo, lo === 0 ? 0 : ends[lo - 1] & 0x3fffffff);
+    },
+    [iteratorSym]() {
+      var seg = segmentsOf(this, '[Symbol.iterator]');
+      var it = create(SegmentIteratorPrototype);
+      setSegmentIteratorSlots(it, { segments: seg, index: 0, start: 0 });
+      return it;
+    },
+  };
+  hidden(SegmentsPrototype, 'containing', segmentsMethods.containing, true);
+  // Hermes leaves computed method names empty.
+  defineProperty(segmentsMethods[iteratorSym], 'name', { value: '[Symbol.iterator]' });
+  hidden(SegmentsPrototype, iteratorSym, segmentsMethods[iteratorSym], true);
+  var segmentIteratorMethods = {
+    next() {
+      var it = getSegmentIteratorSlots(this);
+      if (it === undefined) throw new TypeError('%SegmentIterator%.prototype.next called on incompatible receiver');
+      var seg = it.segments;
+      var ends = segmentEnds(seg);
+      if (it.index >= seg.count) return { value: undefined, done: true };
+      var data = segmentData(seg, it.index, it.start);
+      it.start = ends[it.index++] & 0x3fffffff;
+      return { value: data, done: false };
+    },
+  };
+  hidden(SegmentIteratorPrototype, 'next', segmentIteratorMethods.next, true);
+  defineProperty(SegmentIteratorPrototype, Symbol.toStringTag, { value: 'Segmenter String Iterator', configurable: true });
+
+  var segmenterMethods = {
+    segment(string) {
+      var s = segmenterOf(this, 'segment');
+      var segments = create(SegmentsPrototype);
+      setSegmentsSlots(segments, { segmenter: s, string: toString(string), ends: undefined, count: 0 });
+      return segments;
+    },
+    resolvedOptions() {
+      var s = segmenterOf(this, 'resolvedOptions');
+      return { locale: s.locale, granularity: s.granularity };
+    },
+  };
+  installConstructor('Segmenter', Segmenter, segmenterMethods, { supportedLocalesOf: supportedLocalesOf });
 
   var setLocaleSlots = WeakMap.prototype.set.bind(localeSlots);
   var localeOf = slotsOf(getLocaleSlots, 'Locale');

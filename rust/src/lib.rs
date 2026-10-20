@@ -10,11 +10,13 @@ mod number_data;
 pub mod parts;
 pub mod plural;
 pub mod relativetime;
+pub mod segmenter;
 
 use core::ffi::c_char;
 use icu::list::ListFormatter;
 use plural::{Options, Rules};
 use relativetime::RelativeTimeFormat;
+use segmenter::Segmenter;
 
 unsafe fn str<'a>(p: *const c_char, len: usize) -> &'a str {
     if p.is_null() {
@@ -339,4 +341,52 @@ pub unsafe extern "C" fn hi_lf_format(
     } else {
         f.format_to_string(items.iter())
     }))
+}
+
+/// `granularity`: 0 grapheme, 1 word, 2 sentence. Null if the locale does not parse.
+#[no_mangle]
+pub unsafe extern "C" fn hi_seg_new(
+    locale: *const c_char,
+    len: usize,
+    granularity: u8,
+) -> *mut Segmenter {
+    Segmenter::new(str(locale, len), granularity)
+        .map_or(core::ptr::null_mut(), |s| Box::into_raw(Box::new(s)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn hi_seg_free(s: *mut Segmenter) {
+    if !s.is_null() {
+        drop(Box::from_raw(s));
+    }
+}
+
+/// A Rust-owned u32 array. Free with `hi_u32s_free`.
+#[repr(C)]
+pub struct HiU32s {
+    pub ptr: *mut u32,
+    pub len: usize,
+}
+
+/// The segment ends of `text` (UTF-16, `n` units), packed by `segmenter::pack`.
+#[no_mangle]
+pub unsafe extern "C" fn hi_seg_breaks(s: *const Segmenter, text: *const u16, n: usize) -> HiU32s {
+    let text = if n == 0 {
+        &[]
+    } else {
+        core::slice::from_raw_parts(text, n)
+    };
+    let b = segmenter::pack(&(*s).breaks(text)).into_boxed_slice();
+    let len = b.len();
+    HiU32s {
+        ptr: Box::into_raw(b) as *mut u32,
+        len,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn hi_u32s_free(a: HiU32s) {
+    drop(Box::from_raw(core::ptr::slice_from_raw_parts_mut(
+        a.ptr, a.len,
+    )));
 }
