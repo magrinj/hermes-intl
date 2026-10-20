@@ -22,5 +22,6 @@ fi
 cmake -S host -B host/build -DCMAKE_BUILD_TYPE=Release >/dev/null
 cmake --build host/build -j10 >/dev/null
 DIRS=(test/intl402/PluralRules test/intl402/RelativeTimeFormat test/intl402/ListFormat test/intl402/Locale test/intl402/Intl/getCanonicalLocales
-  test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt test/intl402/Intl/supportedValuesOf)
+  test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt test/intl402/Intl/supportedValuesOf
+  test/intl402/Segmenter)
 node host/test262.mjs host/build/hi-host vendor/test262 "${@:-${DIRS[@]}}"
