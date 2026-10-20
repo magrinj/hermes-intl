@@ -170,6 +170,18 @@ pub unsafe extern "C" fn hi_region_time_zones(region: *const c_char, len: usize)
     owned(Some(locale::time_zones(str(region, len))))
 }
 
+/// Space-separated, sorted.
+#[no_mangle]
+pub extern "C" fn hi_time_zones() -> HiStr {
+    owned(Some(locale::all_time_zones()))
+}
+
+/// Space-separated, sorted.
+#[no_mangle]
+pub extern "C" fn hi_numbering_systems() -> HiStr {
+    owned(Some(number::numbering_systems()))
+}
+
 /// `style`: 0 long, 1 short, 2 narrow. Null if the locale does not parse.
 #[no_mangle]
 pub unsafe extern "C" fn hi_rtf_new(

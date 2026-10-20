@@ -174,6 +174,12 @@ fn text(id: u16) -> Option<&'static str> {
     (id != u16::MAX).then(|| &data::TEXT[data::STARTS[i] as usize..data::STARTS[i + 1] as usize])
 }
 
+/// The numbering systems with digits, sorted, space-separated.
+pub fn numbering_systems() -> String {
+    let names: Vec<_> = data::NUMBERING_SYSTEMS.iter().map(|s| s.0).collect();
+    names.join(" ")
+}
+
 /// The digits of a CLDR numeric numbering system.
 pub fn digits(nu: &str) -> Option<[char; 10]> {
     let (_, d) = data::NUMBERING_SYSTEMS.iter().find(|(n, _)| *n == nu)?;

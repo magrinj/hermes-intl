@@ -183,12 +183,17 @@ at `7ab7fafa` (`scripts/test262.sh`, run in CI). Each test runs in sloppy and st
 | `intl402/Locale` (incl. Locale Info) | 344 | 0 | 1 |
 | `intl402/Intl/getCanonicalLocales` | 76 | 0 | 0 |
 | `intl402/NumberFormat`, `Number`, `BigInt` (iOS's NumberFormat) | 536 | 0 | 1 |
-| **Total** | **1,376** runs | **2** runs | **5** files |
+| `intl402/Intl/supportedValuesOf` | 40 | 8 | 1 |
+| **Total** | **1,416** runs | **10** runs | **6** files |
 
-- Skipped: `proto-from-ctor-realm.js` in each folder needs `$262.createRealm`.
-- Expected failure (`host/test262-expected-failures.txt`), in both modes:
-  `PluralRules/prototype/resolvedOptions/plural-categories-order.js` checks "gv" (Manx), which is
-  not in the recommended locale set.
+- Skipped: `proto-from-ctor-realm.js` in each folder needs `$262.createRealm`, and
+  `calendars-required-by-intl-era-monthcode.js` needs Temporal.
+- Expected failures (`host/test262-expected-failures.txt`), each in both modes:
+  - `PluralRules/prototype/resolvedOptions/plural-categories-order.js` checks "gv" (Manx), which is
+    not in the recommended locale set.
+  - `Intl/supportedValuesOf`: 2 tests check Hermes's own constructors on Apple platforms, whose
+    `Collator` echoes any collation and whose `DateTimeFormat` leaves `numberingSystem` out of
+    `resolvedOptions`. 2 more need `Intl.DisplayNames`.
 
 ## Correctness against V8
 

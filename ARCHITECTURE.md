@@ -79,7 +79,8 @@ if (typeof g.HermesInternal === 'object' && g.HermesInternal !== null) {
 4. The shell receives that object and defines `PluralRules`, `RelativeTimeFormat`, `ListFormat`
    and `Locale` on `Intl`, each only if `Intl[name]` is `undefined`: if Hermes ships one later,
    Hermes's own implementation wins. When it installs `Locale`, it also replaces
-   `Intl.getCanonicalLocales` so that it accepts our `Intl.Locale` objects.
+   `Intl.getCanonicalLocales` so that it accepts our `Intl.Locale` objects. It adds
+   `Intl.supportedValuesOf` too.
 
 Reloads in development repeat the same sequence on the new runtime.
 

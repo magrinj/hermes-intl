@@ -1285,4 +1285,83 @@ module.exports = function (native, global) {
     }
   }
   installConstructor('Locale', Locale, localeMethods, {});
+
+  // Values Hermes's own constructors take are probed on first use: they differ between platforms.
+  function probe(Ctor, candidates, accepts) {
+    var out = [];
+    for (var i = 0; i < candidates.length; i++) {
+      var ok = typeof Ctor !== 'function';
+      try {
+        ok = ok || accepts(Ctor, candidates[i]);
+      } catch (e) {}
+      if (ok) append(out, candidates[i]);
+    }
+    return join(out, ' ');
+  }
+
+  function resolvesTo(Ctor, locale, key, value) {
+    var options = create(null);
+    options[key] = value;
+    return call(Ctor.prototype.resolvedOptions, new Ctor(locale, options))[key] === value;
+  }
+
+  var DateTimeFormat = Intl.DateTimeFormat;
+  var NumberFormat = Intl.NumberFormat;
+  var Collator = Intl.Collator;
+  var valueLists = create(null);
+  // CLDR collations a Collator may take (not "standard" nor "search"), each with a locale that has it.
+  var COLLATION_LOCALES = {
+    big5han: 'zh', compat: 'ar', dict: 'si', direct: 'hi', ducet: 'en', emoji: 'en', eor: 'en', gb2312: 'zh',
+    phonebk: 'de', phonetic: 'ln', pinyin: 'zh', reformed: 'sv', searchjl: 'ko', stroke: 'zh', trad: 'es',
+    unihan: 'zh', zhuyin: 'zh',
+  };
+  var valueGetters = create(null);
+  valueGetters.calendar = function () {
+    var ids = 'buddhist chinese coptic dangi ethioaa ethiopic gregory hebrew indian islamic islamic-civil ' +
+      'islamic-rgsa islamic-tbla islamic-umalqura iso8601 japanese persian roc';
+    return probe(DateTimeFormat, split(ids, ' '), function (C, c) { return resolvesTo(C, 'en', 'calendar', c); });
+  };
+  valueGetters.collation = function () {
+    return probe(Collator, getOwnPropertyNames(COLLATION_LOCALES), function (C, c) {
+      return resolvesTo(C, COLLATION_LOCALES[c], 'collation', c);
+    });
+  };
+  // ISO 4217 codes in current use (CLDR); Hermes's NumberFormat takes any well-formed code.
+  valueGetters.currency = function () {
+    return 'AED AFN ALL AMD ANG AOA ARS AUD AWG AZN BAM BBD BDT BGN BHD BIF BMD BND BOB BRL BSD BTN BWP BYN BZD ' +
+      'CAD CDF CHF CLP CNY COP CRC CUC CUP CVE CZK DJF DKK DOP DZD EGP ERN ETB EUR FJD FKP GBP GEL GHS GIP ' +
+      'GMD GNF GTQ GYD HKD HNL HRK HTG HUF IDR ILS INR IQD IRR ISK JMD JOD JPY KES KGS KHR KMF KPW KRW KWD ' +
+      'KYD KZT LAK LBP LKR LRD LSL LYD MAD MDL MGA MKD MMK MNT MOP MRU MUR MVR MWK MXN MYR MZN NAD NGN NIO ' +
+      'NOK NPR NZD OMR PAB PEN PGK PHP PKR PLN PYG QAR RON RSD RUB RWF SAR SBD SCR SDG SEK SGD SHP SLE SLL ' +
+      'SOS SRD SSP STN SVC SYP SZL THB TJS TMT TND TOP TRY TTD TWD TZS UAH UGX USD UYU UZS VES VND VUV WST ' +
+      'XAF XCD XCG XDR XOF XPF XSU YER ZAR ZMW ZWG ZWL';
+  };
+  valueGetters.numberingSystem = native.numberingSystems;
+  valueGetters.timeZone = native.timeZones;
+  valueGetters.unit = function () {
+    var units = 'acre bit byte celsius centimeter day degree fahrenheit fluid-ounce foot gallon gigabit gigabyte ' +
+      'gram hectare hour inch kilobit kilobyte kilogram kilometer liter megabit megabyte meter microsecond mile ' +
+      'mile-scandinavian milliliter millimeter millisecond minute month nanosecond ounce percent petabyte pound ' +
+      'second stone terabit terabyte week yard year';
+    return probe(NumberFormat, split(units, ' '), function (C, u) {
+      var options = create(null);
+      options.style = 'unit';
+      options.unit = u;
+      new C('en', options);
+      return true;
+    });
+  };
+
+  if (Intl.supportedValuesOf === undefined) {
+    hidden(Intl, 'supportedValuesOf', {
+      supportedValuesOf(key) {
+        key = toString(key);
+        var get = valueGetters[key];
+        if (get === undefined) throw new RangeError('Invalid key: ' + key);
+        var list = valueLists[key];
+        if (list === undefined) list = valueLists[key] = get();
+        return list === '' ? [] : split(list, ' ');
+      },
+    }.supportedValuesOf, true);
+  }
 };

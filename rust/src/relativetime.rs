@@ -244,6 +244,11 @@ mod tests {
         assert_eq!(fmt("en", 1, false, 2.0, 5), "in 2 mo.");
         assert_eq!(fmt("zh-TW", 0, false, 1.0, 3), "1 天後");
         assert_eq!(fmt("en-u-nu-arab", 1, false, 1234.5, 0), "in ١٬٢٣٤٫٥ sec.");
+        // Digits ICU4X does not ship (rust/src/number_data.rs).
+        assert_eq!(
+            fmt("en-u-nu-tols", 0, false, 12.0, 3),
+            "in \u{11de1}\u{11de2} days"
+        );
         let arab = RelativeTimeFormat::new("en-u-nu-arab", 1, false)
             .unwrap()
             .segments(1234.5, 0)
