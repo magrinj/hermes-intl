@@ -224,6 +224,7 @@ mod tests {
         assert_eq!(fmt("en", 0, false, -0.0, 0), "0 seconds ago");
         assert_eq!(fmt("en", 0, true, -0.0, 3), "today");
         assert_eq!(fmt("en", 1, false, 2.0, 5), "in 2 mo.");
+        assert_eq!(fmt("zh-TW", 0, false, 1.0, 3), "1 天後");
         assert_eq!(fmt("en-u-nu-arab", 1, false, 1234.5, 0), "in ١٬٢٣٤٫٥ sec.");
         let arab = RelativeTimeFormat::new("en-u-nu-arab", 1, false)
             .unwrap()

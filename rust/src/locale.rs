@@ -143,6 +143,19 @@ pub fn lookup(requested: &str) -> Option<String> {
         {
             return Some(prefix);
         }
+        // A region can imply another script than its language's: zh-TW is written in zh-Hant,
+        // not in zh's Hans. Truncating it to "zh" would format Simplified Chinese; keep it, as
+        // ICU does: the data lookups fall back to zh-Hant through likely subtags.
+        if loc.id.script.is_none() {
+            let mut full = loc.id.clone();
+            expander().maximize(&mut full);
+            if let Some(script) = full.script.filter(|s| Some(*s) != max.script) {
+                let scripted = format!("{}-{}", loc.id.language, script);
+                if available().binary_search(&scripted.as_str()).is_ok() {
+                    return Some(prefix);
+                }
+            }
+        }
     }
     loop {
         if let Ok(i) = available().binary_search(&prefix.as_str()) {
@@ -306,6 +319,9 @@ mod tests {
         assert_eq!(maximize("zh-TW").as_deref(), Some("zh-Hant-TW"));
         assert_eq!(lookup("en-US").as_deref(), Some("en-US")); // likely region of an available language
         assert_eq!(lookup("en-AQ").as_deref(), Some("en")); // not a CLDR locale nor the likely region
+        assert_eq!(lookup("zh-TW").as_deref(), Some("zh-TW")); // Traditional, not zh's Simplified
+        assert_eq!(lookup("zh-CN").as_deref(), Some("zh-CN"));
+        assert_eq!(lookup("zh-FR").as_deref(), Some("zh"));
         assert_eq!(minimize("en-Latn-US").as_deref(), Some("en"));
         assert_eq!(direction("ar"), 1);
         assert_eq!(direction("en"), 0);
