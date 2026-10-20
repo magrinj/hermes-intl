@@ -12,6 +12,9 @@ use icu::decimal::CompactDecimalFormatter;
 use icu::locale::Locale;
 use icu::plurals::provider::PluralsCardinalV1;
 use icu::plurals::{PluralCategory, PluralOperands, PluralRules, PluralRulesWithRanges};
+use icu_experimental::dimension::provider::units::categorized_display_names::{
+    UnitsNamesDurationCoreV1, UnitsNamesDurationExtendedV1, UnitsNamesDurationOutlierV1,
+};
 use icu_experimental::relativetime::provider::*;
 use icu_provider::prelude::*;
 
@@ -83,7 +86,8 @@ forward!(icu_experimental::provider::Baked:
     ShortSecondRelativeV1, ShortMinuteRelativeV1, ShortHourRelativeV1, ShortDayRelativeV1,
     ShortWeekRelativeV1, ShortMonthRelativeV1, ShortQuarterRelativeV1, ShortYearRelativeV1,
     NarrowSecondRelativeV1, NarrowMinuteRelativeV1, NarrowHourRelativeV1, NarrowDayRelativeV1,
-    NarrowWeekRelativeV1, NarrowMonthRelativeV1, NarrowQuarterRelativeV1, NarrowYearRelativeV1);
+    NarrowWeekRelativeV1, NarrowMonthRelativeV1, NarrowQuarterRelativeV1, NarrowYearRelativeV1,
+    UnitsNamesDurationCoreV1, UnitsNamesDurationExtendedV1, UnitsNamesDurationOutlierV1);
 
 pub struct Rules {
     rules: PluralRulesWithRanges<PluralRules>,

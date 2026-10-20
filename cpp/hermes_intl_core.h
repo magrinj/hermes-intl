@@ -103,6 +103,16 @@ typedef struct HiDisplayNames HiDisplayNames;
 HiDisplayNames *hi_dn_new(const char *locale, size_t len, uint8_t kind, uint8_t style, bool dialect);
 void hi_dn_free(HiDisplayNames *d);
 HiStr hi_dn_of(const HiDisplayNames *d, const char *code, size_t len);
+// Intl.DurationFormat. base 0 long, 1 short, 2 narrow, 3 digital; styles: 10 unit styles, years to
+// nanoseconds (0 long, 1 short, 2 narrow, 3 numeric, 4 2-digit, 5 fractional); bit i of always:
+// unit i's display is "always"; fractional_digits < 0 for undefined. fields: 10 doubles.
+typedef struct HiDurationFormat HiDurationFormat;
+bool hi_df_two_digit_hours(const char *locale, size_t len);
+HiDurationFormat *hi_df_new(const char *locale, size_t len, uint8_t base, const uint8_t *styles, uint16_t always,
+                            int8_t fractional_digits);
+void hi_df_free(HiDurationFormat *f);
+bool hi_duration_valid(const double *fields);
+HiStr hi_df_format(const HiDurationFormat *f, const double *fields, bool packed);
 
 // Intl.ListFormat. kind 0 conjunction, 1 disjunction, 2 unit; style 0 long, 1 short, 2 narrow.
 typedef struct HiListFormat HiListFormat;

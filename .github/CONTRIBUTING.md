@@ -68,14 +68,15 @@ git init -q vendor/test262 && cd vendor/test262
 git remote add origin https://github.com/tc39/test262
 git sparse-checkout set harness test/intl402/PluralRules test/intl402/RelativeTimeFormat \
   test/intl402/ListFormat test/intl402/Locale test/intl402/Intl/getCanonicalLocales \
-  test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt test/intl402/Intl/supportedValuesOf
-  test/intl402/Segmenter test/intl402/DisplayNames
+  test/intl402/NumberFormat test/intl402/Number test/intl402/BigInt test/intl402/Intl/supportedValuesOf \
+  test/intl402/Segmenter test/intl402/DisplayNames test/intl402/DurationFormat
 git fetch -q --depth 1 --filter=blob:none origin 7ab7fafa0003f73fc85c1b95d88094d33f7eb8bd && git checkout -q FETCH_HEAD
 cd ../..
 
 bun run test262               # test262 for the implemented constructors
 scripts/corpus.sh             # correctness corpus; hash must match bench/corpus.hash
 host/build/hi-host host/locale-objects.js   # Hermes's own Intl functions given Intl.Locale objects
+host/build/hi-host host/duration-format-cases.js host/duration-format.js   # see host/duration-format-golden.mjs
 ```
 
 A test that fails for a known reason goes in `host/test262-expected-failures.txt`, with why.

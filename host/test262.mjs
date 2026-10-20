@@ -13,7 +13,7 @@ const list = (meta, key) => {
 };
 
 // The host is a bare Hermes runtime: no $262.createRealm, and Hermes has no Temporal.
-const UNSUPPORTED = ['cross-realm', 'Intl.Era-monthcode'];
+const UNSUPPORTED = ['cross-realm', 'Intl.Era-monthcode', 'Temporal'];
 const EXPECTED = new Set(readFileSync(new URL('./test262-expected-failures.txt', import.meta.url), 'utf8')
   .split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#')));
 let pass = 0;

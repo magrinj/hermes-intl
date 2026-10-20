@@ -186,10 +186,12 @@ at `7ab7fafa` (`scripts/test262.sh`, run in CI). Each test runs in sloppy and st
 | `intl402/Intl/supportedValuesOf` | 42 | 6 | 1 |
 | `intl402/Segmenter` | 154 | 0 | 2 |
 | `intl402/DisplayNames` | 112 | 0 | 1 |
-| **Total** | **1,684** runs | **8** runs | **9** files |
+| `intl402/DurationFormat` | 208 | 0 | 6 |
+| **Total** | **1,892** runs | **8** runs | **15** files |
 
-- Skipped: `proto-from-ctor-realm.js` in each folder needs `$262.createRealm`, and
-  `calendars-required-by-intl-era-monthcode.js` needs Temporal.
+- Skipped: `proto-from-ctor-realm.js` in each folder needs `$262.createRealm`, and the tests that
+  need Temporal (`calendars-required-by-intl-era-monthcode.js` and 6 `DurationFormat` tests that
+  pass a `Temporal.Duration`).
 - Expected failures (`host/test262-expected-failures.txt`), each in both modes:
   - `PluralRules/prototype/resolvedOptions/plural-categories-order.js` checks "gv" (Manx), which is
     not in the recommended locale set.
@@ -222,11 +224,11 @@ Node 22 (ICU 77, CLDR 47) on the same corpus:
 
 | | |
 | --- | --- |
-| npm tarball | 3.0 MB packed, 9.4 MB unpacked, 32 files |
+| npm tarball | 31.6 MB packed, 65.8 MB unpacked, 32 files |
 | Locales | ICU4X recommended set, 514 ([list](../rust/locales/recommended.txt)) |
-| Native size | Android 1.65 MB arm64-v8a, 1.02 MB armeabi-v7a, 1.71 MB x86_64, 1.21 MB x86; iOS 1.24 MB device |
-| Native size, 5 locales | Android 0.60 MB arm64-v8a, 0.45 MB armeabi-v7a; iOS 0.55 MB |
-| JS shell | 39 KB source, 37 KB bytecode |
+| Native size | Android 8.77 MB arm64-v8a, 7.99 MB armeabi-v7a, 8.84 MB x86_64, 8.23 MB x86; iOS 10.59 MB device |
+| Native size, 5 locales | Android 3.50 MB arm64-v8a, 3.31 MB armeabi-v7a; iOS 4.17 MB |
+| JS shell | 73 KB source, 66 KB bytecode |
 | Tested | React Native 0.87.1 and Expo SDK 57 (React Native 0.86.3, `expo prebuild`), Android and iOS release builds, debug with Metro reloads |
 
 ## Also found

@@ -103,7 +103,7 @@ pub fn segments(w: &impl Writeable) -> Vec<(u8, String)> {
 
 /// The count, each kind, each UTF-16 length, then the text. Numbers are two 15-bit UTF-16 units
 /// (high, low): up to 2^30 fits and no unit is a surrogate.
-pub fn pack(segs: &[(u8, String)]) -> String {
+pub fn pack<K: Copy + Into<usize>>(segs: &[(K, String)]) -> String {
     let mut s = String::new();
     let num = |s: &mut String, v: usize| {
         for unit in [(v >> 15) & 0x7FFF, v & 0x7FFF] {
@@ -111,7 +111,7 @@ pub fn pack(segs: &[(u8, String)]) -> String {
         }
     };
     num(&mut s, segs.len());
-    segs.iter().for_each(|(k, _)| num(&mut s, *k as usize));
+    segs.iter().for_each(|(k, _)| num(&mut s, (*k).into()));
     segs.iter()
         .for_each(|(_, t)| num(&mut s, t.encode_utf16().count()));
     segs.iter().for_each(|(_, t)| s.push_str(t));

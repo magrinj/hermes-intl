@@ -26,6 +26,7 @@ using NumberFormatState = Owned<HiNumberFormat, hi_nf_free>;
 #endif
 using SegmenterState = Owned<HiSegmenter, hi_seg_free>;
 using DisplayNamesState = Owned<HiDisplayNames, hi_dn_free>;
+using DurationFormatState = Owned<HiDurationFormat, hi_df_free>;
 
 template <class S>
 Value handleFor(Runtime &rt, decltype(S::ptr) p, const char *what) {
@@ -262,6 +263,36 @@ Object createNative(Runtime &rt, const std::string &hostLocale) {
   def(rt, native, "dnOf", 2, [](Runtime &rt, const Value &, const Value *a, size_t) {
     std::string code = a[1].getString(rt).utf8(rt);
     return take(rt, hi_dn_of(unwrap<DisplayNamesState>(rt, a[0]), code.data(), code.size()));
+  });
+
+  // Intl.DurationFormat
+  def(rt, native, "dfTwoDigitHours", 1, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string locale = a[0].getString(rt).utf8(rt);
+    return Value(hi_df_two_digit_hours(locale.data(), locale.size()));
+  });
+  // styles: three bits per unit, years first.
+  def(rt, native, "dfNew", 5, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string locale = a[0].getString(rt).utf8(rt);
+    auto packed = static_cast<uint32_t>(a[2].getNumber());
+    uint8_t styles[10];
+    for (int i = 0; i < 10; i++) styles[i] = (packed >> (3 * i)) & 7;
+    return handleFor<DurationFormatState>(
+        rt,
+        hi_df_new(locale.data(), locale.size(), u8(a[1]), styles, static_cast<uint16_t>(a[3].getNumber()),
+                  static_cast<int8_t>(a[4].getNumber())),
+        "Intl.DurationFormat");
+  });
+  def(rt, native, "dfValid", 10, [](Runtime &, const Value &, const Value *a, size_t) {
+    double fields[10];
+    for (int i = 0; i < 10; i++) fields[i] = a[i].getNumber();
+    return Value(hi_duration_valid(fields));
+  });
+  def(rt, native, "dfFormat", 12, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    double fields[10];
+    for (int i = 0; i < 10; i++) fields[i] = a[1 + i].getNumber();
+    Value v = take(rt, hi_df_format(unwrap<DurationFormatState>(rt, a[0]), fields, a[11].getBool()));
+    if (v.isUndefined()) throw JSError(rt, "Intl.DurationFormat: formatting failed");
+    return v;
   });
 
   return Object::createFromHostObject(rt, host);
