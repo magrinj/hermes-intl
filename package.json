@@ -1,7 +1,7 @@
 {
   "name": "hermes-intl",
   "version": "0.3.0",
-  "description": "Native Intl.PluralRules, RelativeTimeFormat, ListFormat, Segmenter, DisplayNames and Locale for Hermes, backed by ICU4X",
+  "description": "Native Intl.PluralRules, RelativeTimeFormat, ListFormat, Segmenter, DisplayNames, DurationFormat and Locale for Hermes, backed by ICU4X",
   "main": "src/index.js",
   "react-native": "src/index.js",
   "types": "src/index.d.ts",
@@ -41,7 +41,8 @@
     "listformat",
     "numberformat",
     "segmenter",
-    "displaynames"
+    "displaynames",
+    "durationformat"
   ],
   "author": "Jérémy Magrin <contact@magrin.fr> (magrinj)",
   "license": "MIT",

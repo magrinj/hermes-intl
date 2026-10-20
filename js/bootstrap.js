@@ -75,6 +75,8 @@ module.exports = function (native, global) {
     'approximatelySign'];
   // formatRangeToParts sources, in bits 5 and 6 of a part's kind.
   var PART_SOURCES = [undefined, 'startRange', 'endRange', 'shared'];
+  // A part's unit for DurationFormat, in bits 7 and up of its kind.
+  var PART_UNITS = ['year', 'month', 'week', 'day', 'hour', 'minute', 'second', 'millisecond', 'microsecond', 'nanosecond'];
 
   // Declared up front: Intl.Locale objects are accepted wherever a locale list is.
   var localeSlots = new WeakMap();
@@ -317,9 +319,10 @@ module.exports = function (native, global) {
       var length = num(2 + 2 * n + 2 * i);
       var value = slice(packed, offset, offset + length);
       var type = PART_TYPES[kind & 31];
-      var source = PART_SOURCES[kind >> 5];
+      var source = PART_SOURCES[(kind >> 5) & 3];
+      var u = kind >> 7 ? PART_UNITS[(kind >> 7) - 1] : kind !== 0 ? unit : undefined;
       append(result, source !== undefined ? { type: type, value: value, source: source }
-        : unit !== undefined && kind !== 0 ? { type: type, value: value, unit: unit }
+        : u !== undefined ? { type: type, value: value, unit: u }
         : { type: type, value: value });
       offset += length;
     }
@@ -1080,6 +1083,137 @@ module.exports = function (native, global) {
     },
   };
   installConstructor('DisplayNames', DisplayNames, dnMethods, { supportedLocalesOf: supportedLocalesOf });
+
+  var dfNew = native.dfNew;
+  var dfFormat = native.dfFormat;
+  var dfValid = native.dfValid;
+  var dfTwoDigitHours = native.dfTwoDigitHours;
+  var DURATION_UNITS = ['years', 'months', 'weeks', 'days', 'hours', 'minutes', 'seconds', 'milliseconds', 'microseconds', 'nanoseconds'];
+  // Shared with rust/src/duration.rs.
+  var DURATION_STYLES = ['long', 'short', 'narrow', 'numeric', '2-digit', 'fractional'];
+  var BASE_STYLES = ['long', 'short', 'narrow', 'digital'];
+  var dfSlots = new WeakMap();
+  var dfOf = slotsOf(WeakMap.prototype.get.bind(dfSlots), 'DurationFormat');
+  var setDfSlots = WeakMap.prototype.set.bind(dfSlots);
+
+  // GetDurationUnitOptions for unit i of DURATION_UNITS: [style, display].
+  function durationUnitOptions(i, options, baseStyle, prevStyle, twoDigitHours) {
+    var unit = DURATION_UNITS[i];
+    var values = i < 4 ? STYLES : i < 7 ? ['long', 'short', 'narrow', 'numeric', '2-digit'] : ['long', 'short', 'narrow', 'numeric'];
+    var style = getOption(options, unit, values, undefined);
+    var displayDefault = 'always';
+    if (style === undefined) {
+      if (baseStyle === 'digital') {
+        style = i < 4 ? 'short' : 'numeric';
+        if (i < 4 || i > 6) displayDefault = 'auto';
+      } else if (prevStyle === 'fractional' || prevStyle === 'numeric' || prevStyle === '2-digit') {
+        style = 'numeric';
+        if (i !== 5 && i !== 6) displayDefault = 'auto';
+      } else {
+        style = baseStyle;
+        displayDefault = 'auto';
+      }
+    }
+    if (style === 'numeric' && i > 6) {
+      style = 'fractional';
+      displayDefault = 'auto';
+    }
+    var display = getOption(options, unit + 'Display', ['auto', 'always'], displayDefault);
+    if (display === 'always' && style === 'fractional') throw new RangeError(unit + ' cannot be shown always as a fraction');
+    if (prevStyle === 'fractional' && style !== 'fractional') throw new RangeError(unit + ' must be fractional');
+    if (prevStyle === 'numeric' || prevStyle === '2-digit') {
+      if (style !== 'fractional' && style !== 'numeric' && style !== '2-digit') throw new RangeError(unit + ' must be numeric');
+      if (i === 5 || i === 6) style = '2-digit';
+    }
+    // [[TwoDigitHours]] is about the numeric style; the spec's step applies it to every style.
+    if (i === 4 && twoDigitHours && style === 'numeric') style = '2-digit';
+    return [style, display];
+  }
+
+  function DurationFormat() {
+    var self = this;
+    construct(self, new.target, DurationFormat, 'DurationFormat');
+    var requested = canonicalizeLocaleList(arguments[0]);
+    var options = getOptionsObject(arguments[1]);
+    getOption(options, 'localeMatcher', ['lookup', 'best fit'], 'best fit');
+    var nu = getOptionAny(options, 'numberingSystem');
+    if (nu !== undefined && !isType(nu)) throw new RangeError('Invalid numberingSystem: ' + nu);
+    var r = resolveLocale(requested, true, nu);
+    var s = create(null);
+    s.locale = r.locale;
+    s.numberingSystem = r.nu;
+    s.style = getOption(options, 'style', BASE_STYLES, 'short');
+    s.styles = [];
+    s.displays = [];
+    var twoDigitHours = dfTwoDigitHours(r.dataLocale);
+    var prevStyle = '';
+    var packedStyles = 0;
+    var always = 0;
+    for (var i = 0; i < 10; i++) {
+      var u = durationUnitOptions(i, options, s.style, prevStyle, twoDigitHours);
+      append(s.styles, u[0]);
+      append(s.displays, u[1]);
+      if (i >= 4 && i <= 8) prevStyle = u[0];
+      packedStyles |= indexOf(DURATION_STYLES, u[0]) << (3 * i);
+      if (u[1] === 'always') always |= 1 << i;
+    }
+    s.fractionalDigits = getNumberOption(options, 'fractionalDigits', 0, 9, undefined);
+    var fd = s.fractionalDigits === undefined ? -1 : s.fractionalDigits;
+    s.handle = dfNew(r.dataLocale, indexOf(BASE_STYLES, s.style), packedStyles, always, fd);
+    setDfSlots(self, s);
+  }
+
+  // ToDurationRecord reads the fields in alphabetical order; ORDER maps them to DURATION_UNITS.
+  var DURATION_FIELDS = ['days', 'hours', 'microseconds', 'milliseconds', 'minutes', 'months', 'nanoseconds', 'seconds', 'weeks', 'years'];
+  var DURATION_ORDER = [3, 4, 8, 7, 5, 1, 9, 6, 2, 0];
+
+  function toDurationRecord(input) {
+    if (!isObject(input)) {
+      if (typeof input === 'string') throw new RangeError('Duration strings are not supported');
+      throw new TypeError('Duration must be an object');
+    }
+    var d = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    var any = false;
+    for (var k = 0; k < 10; k++) {
+      var v = input[DURATION_FIELDS[k]];
+      if (v !== undefined) {
+        any = true;
+        v = +v; // ToIntegerIfIntegral: throws for Symbol and BigInt
+        if (!isFinite_(v) || trunc(v) !== v) throw new RangeError(DURATION_FIELDS[k] + ' must be an integer');
+        d[DURATION_ORDER[k]] = v;
+      }
+    }
+    if (!any) throw new TypeError('Duration must have at least one unit');
+    if (!dfValid(d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8], d[9])) throw new RangeError('Invalid duration');
+    return d;
+  }
+
+  function dfCall(df, method, duration, packed) {
+    var s = dfOf(df, method);
+    var d = toDurationRecord(duration);
+    return dfFormat(s.handle, d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7], d[8], d[9], packed);
+  }
+
+  var dfMethods = {
+    format(duration) {
+      return dfCall(this, 'format', duration, false);
+    },
+    formatToParts(duration) {
+      return unpackParts(dfCall(this, 'formatToParts', duration, true));
+    },
+    resolvedOptions() {
+      var s = dfOf(this, 'resolvedOptions');
+      var o = { locale: s.locale, numberingSystem: s.numberingSystem, style: s.style };
+      for (var i = 0; i < 10; i++) {
+        dataProp(o, DURATION_UNITS[i], s.styles[i] === 'fractional' ? 'numeric' : s.styles[i]);
+        dataProp(o, DURATION_UNITS[i] + 'Display', s.displays[i]);
+      }
+      if (s.fractionalDigits !== undefined) dataProp(o, 'fractionalDigits', s.fractionalDigits);
+      return o;
+    },
+  };
+  installConstructor('DurationFormat', DurationFormat, dfMethods, { supportedLocalesOf: supportedLocalesOf });
+
 
   var setLocaleSlots = WeakMap.prototype.set.bind(localeSlots);
   var localeOf = slotsOf(getLocaleSlots, 'Locale');

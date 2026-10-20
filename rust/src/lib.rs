@@ -3,6 +3,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 pub mod displaynames;
+pub mod duration;
 #[rustfmt::skip]
 mod displaynames_data;
 pub mod list;
@@ -17,6 +18,7 @@ pub mod segmenter;
 
 use core::ffi::c_char;
 use displaynames::DisplayNames;
+use duration::DurationFormat;
 use icu::list::ListFormatter;
 use plural::{Options, Rules};
 use relativetime::RelativeTimeFormat;
@@ -327,6 +329,69 @@ pub unsafe extern "C" fn hi_dn_of(
     len: usize,
 ) -> HiStr {
     owned((*d).of(str(code, len)))
+}
+
+/// [[TwoDigitHours]] of a locale's digital duration format.
+#[no_mangle]
+pub unsafe extern "C" fn hi_df_two_digit_hours(locale: *const c_char, len: usize) -> bool {
+    duration::two_digit_hours(str(locale, len))
+}
+
+/// `base`: 0 long, 1 short, 2 narrow, 3 digital; `styles`: 10 unit styles, years to nanoseconds
+/// (duration.rs); bit i of `always`: unit i's display is "always"; `fractional_digits` < 0 for
+/// undefined. Null if the locale has no data.
+#[no_mangle]
+pub unsafe extern "C" fn hi_df_new(
+    locale: *const c_char,
+    len: usize,
+    base: u8,
+    styles: *const u8,
+    always: u16,
+    fractional_digits: i8,
+) -> *mut DurationFormat {
+    let styles: [u8; 10] = core::slice::from_raw_parts(styles, 10)
+        .try_into()
+        .unwrap_or([0; 10]);
+    let fd = u8::try_from(fractional_digits).ok();
+    DurationFormat::new(str(locale, len), base, styles, always, fd)
+        .map_or(core::ptr::null_mut(), |f| Box::into_raw(Box::new(f)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn hi_df_free(f: *mut DurationFormat) {
+    if !f.is_null() {
+        drop(Box::from_raw(f));
+    }
+}
+
+/// IsValidDuration over the 10 fields, years to nanoseconds.
+#[no_mangle]
+pub unsafe extern "C" fn hi_duration_valid(fields: *const f64) -> bool {
+    duration::is_valid(
+        core::slice::from_raw_parts(fields, 10)
+            .try_into()
+            .unwrap_or([f64::NAN; 10]),
+    )
+}
+
+/// `fields`: a valid duration, years to nanoseconds. `packed` = formatToParts encoding (parts.rs),
+/// each kind carrying its unit (1 years ..= 10 nanoseconds) in bits 7 and up.
+#[no_mangle]
+pub unsafe extern "C" fn hi_df_format(
+    f: *const DurationFormat,
+    fields: *const f64,
+    packed: bool,
+) -> HiStr {
+    let fields: [f64; 10] = core::slice::from_raw_parts(fields, 10)
+        .try_into()
+        .unwrap_or([0.0; 10]);
+    owned((*f).segments(fields).map(|s| {
+        if packed {
+            parts::pack(&s)
+        } else {
+            s.into_iter().map(|s| s.1).collect()
+        }
+    }))
 }
 
 /// `kind`: 0 conjunction, 1 disjunction, 2 unit; `style`: 0 long, 1 short, 2 narrow.

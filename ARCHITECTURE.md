@@ -8,11 +8,12 @@ code calls `Intl.PluralRules`. For installation and numbers, see the [README](RE
 
 Hermes ships `Intl.NumberFormat`, `Intl.DateTimeFormat` and `Intl.Collator`, backed by the
 platform. It has no `Intl.PluralRules`, `Intl.RelativeTimeFormat`, `Intl.ListFormat`,
-`Intl.Segmenter`, `Intl.DisplayNames` or `Intl.Locale`. Apps fill the gap with JavaScript polyfills (FormatJS) that carry their locale
-data as JS: bigger bundles, slow calls, and output that differs between iOS and Android because
-the polyfills lean on Hermes's own `NumberFormat`.
+`Intl.Segmenter`, `Intl.DisplayNames`, `Intl.DurationFormat` or `Intl.Locale`. Apps fill the gap
+with JavaScript polyfills (FormatJS) that carry their locale data as JS: bigger bundles, slow
+calls, and output that differs between iOS and Android because the polyfills lean on Hermes's own
+`NumberFormat`.
 
-hermes-intl implements those five constructors natively. It has no API of its own: you import it
+hermes-intl implements those seven constructors natively. It has no API of its own: you import it
 once and the standard globals appear.
 
 ## Overview
@@ -24,7 +25,8 @@ app code, i18next, react-intl, Luxon
 globalThis.Intl
   NumberFormat, DateTimeFormat, Collator      Hermes, untouched
   PluralRules, RelativeTimeFormat,
-  ListFormat, Segmenter, DisplayNames, Locale added by hermes-intl
+  ListFormat, Segmenter, DisplayNames,
+  DurationFormat, Locale                      added by hermes-intl
         |
         v
 1. JS shell      js/bootstrap.js         the ECMA-402 rules
@@ -36,8 +38,8 @@ globalThis.Intl
 3. Rust core     rust/src/*.rs           algorithms and CLDR data (ICU4X)
 ```
 
-**Rust core.** Wraps ICU4X: plural categories, relative-time and list patterns, text segmentation, display names,
-locale canonicalization and likely subtags, number formatting for the parts. The CLDR data is compiled
+**Rust core.** Wraps ICU4X: plural categories, relative-time, list and duration patterns, text
+segmentation, display names, locale canonicalization and likely subtags, number formatting for the parts. The CLDR data is compiled
 into the binary for the locales in [rust/locales/recommended.txt](rust/locales/recommended.txt);
 `rust/build.rs` turns that list into the one used for lookup. The C ABI is in
 [rust/src/lib.rs](rust/src/lib.rs), mirrored by [cpp/hermes_intl_core.h](cpp/hermes_intl_core.h).
@@ -79,7 +81,7 @@ if (typeof g.HermesInternal === 'object' && g.HermesInternal !== null) {
    `codegenConfig.ios.modulesProvider` ([ios/HermesIntlProvider.mm](ios/HermesIntlProvider.mm)).
 3. `install(hostLocale)` runs synchronously and returns the object of host functions.
 4. The shell receives that object and defines `PluralRules`, `RelativeTimeFormat`, `ListFormat`,
-   `Segmenter`, `DisplayNames` and `Locale` on `Intl`, each only if `Intl[name]` is `undefined`: if Hermes ships one later,
+   `Segmenter`, `DisplayNames`, `DurationFormat` and `Locale` on `Intl`, each only if `Intl[name]` is `undefined`: if Hermes ships one later,
    Hermes's own implementation wins. When it installs `Locale`, it also replaces
    `Intl.getCanonicalLocales` so that it accepts our `Intl.Locale` objects. It adds
    `Intl.supportedValuesOf` too.
@@ -147,7 +149,6 @@ list, so the shell wraps them to pass it as its tag, and gives instances of a su
 subclass's prototype. Lists go through untouched (Hermes reads a Locale in one through its
 `toString`); names and everything else stay Hermes's. There is no network access, no storage and
 no UI.
-`Intl.DurationFormat` is not provided.
 
 ## Build and packaging
 

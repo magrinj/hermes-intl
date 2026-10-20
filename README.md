@@ -12,7 +12,7 @@
 [![CI](https://github.com/magrinj/hermes-intl/actions/workflows/ci.yml/badge.svg)](https://github.com/magrinj/hermes-intl/actions/workflows/ci.yml)
 ![npm downloads](https://img.shields.io/npm/dm/hermes-intl)
 
-Native `Intl.PluralRules`, `Intl.RelativeTimeFormat`, `Intl.ListFormat`, `Intl.Segmenter`, `Intl.DisplayNames` and `Intl.Locale` for
+Native `Intl.PluralRules`, `Intl.RelativeTimeFormat`, `Intl.ListFormat`, `Intl.Segmenter`, `Intl.DisplayNames`, `Intl.DurationFormat` and `Intl.Locale` for
 React Native's [Hermes](https://github.com/facebook/hermes) engine, backed by
 [ICU4X](https://github.com/unicode-org/icu4x), and on iOS a full `Intl.NumberFormat` in place of
 Hermes's own. A drop-in replacement for the [FormatJS](https://formatjs.github.io/) polyfills.
@@ -23,12 +23,12 @@ Hermes's own. A drop-in replacement for the [FormatJS](https://formatjs.github.i
   the FormatJS polyfills.
   Screens that format dates and counts open about twice as fast, and the worst frame of a fast
   scroll is half as long.
-- **Correct, and the same everywhere.** It passes test262 for these APIs (known failures come from
-  Hermes's own `Intl`) and gives byte-identical output on iOS and Android. FormatJS output depends
+- **Correct, and the same everywhere.** It passes test262 for these APIs (4 known failures, listed
+  [below](#whats-included)) and gives byte-identical output on iOS and Android. FormatJS output depends
   on the platform, and its plurals for decimals are wrong in some languages.
 - **Drop-in.** It installs the standard `Intl` constructors, so code and libraries that use them
   (i18next, react-intl, Luxon) pick it up without changes. The app ships ~400 KB less JavaScript
-  and 7.9 to 8.7 MB more native code per Android ABI, 10.5 MB on iOS, most of it the names of every
+  and 8.0 to 8.8 MB more native code per Android ABI, 10.6 MB on iOS, most of it the names of every
   language, region and currency in 514 locales ([fewer locales](#locales-and-size) make it much
   smaller).
 
@@ -71,7 +71,7 @@ import 'hermes-intl';
 ```
 
 Then remove `@formatjs/intl-pluralrules`, `intl-relativetimeformat`, `intl-listformat`,
-`intl-segmenter`, `intl-displaynames`, `intl-locale` and `intl-getcanonicallocales` from your app.
+`intl-segmenter`, `intl-displaynames`, `intl-durationformat`, `intl-locale` and `intl-getcanonicallocales` from your app.
 
 **Requirements:** React Native 0.86+ with the New Architecture and Hermes (the default engine). Expo works with a
 development build (`npx expo prebuild`), not Expo Go. Tested on React Native 0.87.1 and Expo SDK 57.
@@ -86,6 +86,7 @@ new Intl.RelativeTimeFormat('fr', { numeric: 'auto' }).format(-1, 'day'); // "hi
 new Intl.ListFormat('en', { type: 'conjunction' }).format(['Anna', 'Omar', 'Yuki']); // "Anna, Omar, and Yuki"
 [...new Intl.Segmenter().segment('👨‍👩‍👧 ok')].length; // 4: the family emoji is one grapheme
 new Intl.DisplayNames('fr', { type: 'region' }).of('DE'); // "Allemagne"
+new Intl.DurationFormat('en', { style: 'digital' }).format({ hours: 1, minutes: 2 }); // "1:02:00"
 new Intl.Locale('ar-EG').maximize().getWeekInfo(); // { firstDay: 6, weekend: [5, 6] }
 ```
 
@@ -116,6 +117,7 @@ installOnWorkletRuntime(runtime); // one from createWorkletRuntime
 | `Intl.ListFormat` | conjunction / disjunction / unit, long / short / narrow, `formatToParts` |
 | `Intl.Segmenter` | grapheme, word (with `isWordLike`) and sentence segments, `containing`; words in Chinese, Japanese, Thai, Lao, Khmer and Burmese use ICU4X's dictionaries and models |
 | `Intl.DisplayNames` | names of languages (dialect or standard), regions, scripts, currencies, calendars and date-time fields; long / short / narrow, `fallback` |
+| `Intl.DurationFormat` | long / short / narrow / digital, every per-unit style and display option, `fractionalDigits`, `formatToParts`; exact arithmetic on the units |
 | `Intl.Locale` | all getters, `maximize`, `minimize`, and the Locale Info methods (`getWeekInfo`, `getTextInfo`, `getCalendars`, `getHourCycles`, `getNumberingSystems`, `getTimeZones`, `getCollations`) |
 | `Intl.getCanonicalLocales` | replaced so it accepts `Intl.Locale` objects |
 | `Intl.supportedValuesOf` | calendars, collations, currencies, numbering systems, time zones and units; the values Hermes's own constructors take are checked on first use |
@@ -123,7 +125,7 @@ installOnWorkletRuntime(runtime); // one from createWorkletRuntime
 | `Intl.DateTimeFormat`, `Collator`, `Date` `toLocale*String`, `localeCompare` | Hermes's own, wrapped so they accept an `Intl.Locale` object as the locale |
 
 Each constructor is installed only if Hermes lacks it. On other engines (JSC, web) the import does
-nothing. Conformance: 1,684 of 1,692 test262 `intl402` runs pass for these APIs (each test runs in
+nothing. Conformance: 1,892 of 1,900 test262 `intl402` runs pass for these APIs (each test runs in
 sloppy and strict mode). The 8 others are 4 known failures: 2 where a test checks Hermes's own
 `DateTimeFormat` or `Collator`, historic currencies that `DisplayNames` names but
 `supportedValuesOf` leaves out (as V8 does), and a locale outside the shipped set.
@@ -136,22 +138,20 @@ The binaries include ICU4X's recommended set of 514 locales
 
 | Platform | Native size added |
 | --- | --- |
-| Android | 8.6 MB (arm64-v8a), 7.9 MB (armeabi-v7a), 8.7 MB (x86_64), 8.1 MB (x86) |
-| iOS | 10.5 MB (arm64 device) |
+| Android | 8.8 MB (arm64-v8a), 8.0 MB (armeabi-v7a), 8.8 MB (x86_64), 8.2 MB (x86) |
+| iOS | 10.6 MB (arm64 device) |
 
-Of that, `Intl.DisplayNames` takes about 4.5 MB (the names), `Intl.Segmenter` 2.4 MB (almost all the
-Chinese and Japanese word dictionary) and, on iOS, `Intl.NumberFormat` 2.3 MB (currency names,
-compact and unit patterns).
+Of that, `Intl.DisplayNames` takes about 4.5 MB (the names of every language, region, script and
+currency, in each of the 514 locales), `Intl.Segmenter` 2.4 MB (almost all the Chinese and Japanese
+word dictionary) and, on iOS, `Intl.NumberFormat` 2.3 MB (currency names, compact and unit
+patterns).
 
-`Intl.DisplayNames` accounts for 4.5 MB of it: the names of every language, region, script and
-currency, in each of the 514 locales. To ship only your app's locales (about 1.1 MB per ABI for 5
-locales), build the binaries yourself:
-see [CONTRIBUTING.md](.github/CONTRIBUTING.md#custom-locale-set).
+To ship only your app's locales (about 3.5 MB per ABI for 5, the Segmenter dictionary
+included), build the binaries yourself: see [CONTRIBUTING.md](.github/CONTRIBUTING.md#custom-locale-set).
 
 ## Not included (yet)
 
 - `Intl.DateTimeFormat` and `Collator` replacements: Hermes's own are kept.
-- `DurationFormat`.
 
 ## Differences from V8 worth knowing
 
@@ -165,9 +165,14 @@ see [CONTRIBUTING.md](.github/CONTRIBUTING.md#custom-locale-set).
 - `getHourCycles()` and `getCalendars()` use compact CLDR tables; ICU4X ships no hour-cycle data.
 - `getCollations()` returns the spec's fallback list, as no collation data is bundled.
 - `Intl.Segmenter` splits Japanese and Chinese words with ICU4X's dictionary, which differs from
-  ICU's in places, and keeps a Khmer consonant cluster (`ស្តី`) in one grapheme where V8 splits it.
+  ICU's in places, keeps a Khmer consonant cluster (`ស្តី`) in one grapheme where V8 splits it,
+  and counts a lone `_` as a word.
 - `Intl.DisplayNames` uses CLDR 48 where Node 22 has CLDR 47, so a few names differ ("hindi" in
   Portuguese, the new Caribbean guilder). As in V8, currency names ignore `style`.
+- `Intl.DurationFormat` follows the spec where V8 differs: units are added exactly
+  (`{ seconds: 10000000, nanoseconds: 1 }` ends in `.000000001`, not `.000000002`), a numeric
+  unit after a text one is a list item (`1 hr, 2 min, 3`, as in Safari, not `1 hr, 2 min:3`), and
+  hours have two digits in the digital style where CLDR says so (`01:02:03` in Afrikaans).
 - A single realm is assumed, as in React Native: subclassing across realms (`Reflect.construct`
   with a `newTarget` from another realm) uses this realm's prototypes.
 
