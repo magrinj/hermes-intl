@@ -91,6 +91,18 @@ With i18next, plurals just work:
 i18n.t('likes', { count: 3 }); // likes_few in Polish, likes_other in English
 ```
 
+### Worklets
+
+With [react-native-worklets](https://docs.swmansion.com/react-native-worklets/) (Reanimated 4) and
+its Babel plugin (tested with 0.13), install the same constructors on a worklet runtime:
+
+```js
+import { installOnWorkletRuntime } from 'hermes-intl';
+
+installOnWorkletRuntime();        // the UI runtime
+installOnWorkletRuntime(runtime); // one from createWorkletRuntime
+```
+
 ## What's included
 
 | API | Notes |
@@ -126,7 +138,6 @@ see [CONTRIBUTING.md](.github/CONTRIBUTING.md#custom-locale-set).
 - `Intl.NumberFormat` / `DateTimeFormat` replacements: Hermes's own are kept.
   Note that Hermes's `NumberFormat` lacks `formatToParts` on iOS and ignores `-u-nu-` there.
 - `DisplayNames`, `Segmenter`, `DurationFormat`, `supportedValuesOf`.
-- Worklet runtimes (Reanimated): install runs on the main JS runtime only.
 
 ## Differences from V8 worth knowing
 

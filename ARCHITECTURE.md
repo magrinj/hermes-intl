@@ -83,6 +83,11 @@ if (typeof g.HermesInternal === 'object' && g.HermesInternal !== null) {
 
 Reloads in development repeat the same sequence on the new runtime.
 
+**Worklet runtimes.** The host functions object is a `jsi::HostObject` whose functions are made in
+the runtime that reads them, and `js/bootstrap.js` carries a `'worklet'` directive. Under
+react-native-worklets' Babel plugin, `installOnWorkletRuntime` ([src/index.js](src/index.js)) runs the
+bootstrap on another runtime with the same HostObject, which worklets passes by reference.
+
 **Default locale.** Constructors called without a locale use the device's. On Android,
 `I18nManager` reports Java's `Locale.toString()` format (`zh_CN_#Hans`) and
 [src/hostLocale.js](src/hostLocale.js) converts it to BCP 47. React Native reports nothing on

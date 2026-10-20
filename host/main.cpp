@@ -1,7 +1,8 @@
 // Test host: a Hermes runtime with hermes-intl installed, evaluating the given JS files in order
 // (test262 harness files first, then the test). Exit 0 = all evaluated cleanly.
-//   hi-host [--locale en-US] [--strict] file.js...
-// Globals: print(...), __now() (ms, steady clock).
+//   hi-host [--locale en-US] [--strict] [--bare] file.js...
+// Globals: print(...), __now() (ms, steady clock). --bare skips the bootstrap and exposes the host
+// functions as __hermesIntlNative instead, as a worklet runtime first sees them.
 #include "hermes_intl.h"
 
 #include <hermes/hermes.h>
@@ -25,11 +26,13 @@ static std::string readFile(const char *path) {
 int main(int argc, char **argv) {
   std::string locale = "en-US";
   bool strict = false;
+  bool bare = false;
   int i = 1;
   for (; i < argc && argv[i][0] == '-' && argv[i][1] == '-'; i++) {
     std::string a = argv[i];
     if (a == "--locale" && i + 1 < argc) locale = argv[++i];
     else if (a == "--strict") strict = true;
+    else if (a == "--bare") bare = true;
   }
 
   auto rt = facebook::hermes::makeHermesRuntime(
@@ -47,12 +50,16 @@ int main(int argc, char **argv) {
       }));
 
   try {
-    // What src/index.js does in an app: js/bootstrap.js (a CommonJS module) called on the host functions.
-    std::string bootstrap = "(function (module) {\n" + readFile(HERMES_INTL_BOOTSTRAP) + "\nreturn module.exports;\n})({})";
-    rt->evaluateJavaScript(std::make_shared<StringBuffer>(std::move(bootstrap)), "js/bootstrap.js")
-        .getObject(*rt)
-        .getFunction(*rt)
-        .call(*rt, hermes_intl::createNative(*rt, locale), rt->global());
+    if (bare) {
+      rt->global().setProperty(*rt, "__hermesIntlNative", hermes_intl::createNative(*rt, locale));
+    } else {
+      // What src/index.js does in an app: js/bootstrap.js (a CommonJS module) called on the host functions.
+      std::string bootstrap = "(function (module) {\n" + readFile(HERMES_INTL_BOOTSTRAP) + "\nreturn module.exports;\n})({})";
+      rt->evaluateJavaScript(std::make_shared<StringBuffer>(std::move(bootstrap)), "js/bootstrap.js")
+          .getObject(*rt)
+          .getFunction(*rt)
+          .call(*rt, hermes_intl::createNative(*rt, locale), rt->global());
+    }
     for (; i < argc; i++) {
       std::string src = readFile(argv[i]);
       if (strict) src = "'use strict';\n" + src;
