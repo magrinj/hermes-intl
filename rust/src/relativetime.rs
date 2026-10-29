@@ -3,53 +3,90 @@
 
 use crate::parts;
 use fixed_decimal::{Decimal, UnsignedRoundingMode};
+use icu::decimal::provider::{DecimalDigitsV1, DecimalSymbolsV1};
 use icu::decimal::DecimalFormatter;
 use icu::locale::Locale;
+use icu::plurals::provider::PluralsCardinalV1;
 use icu_experimental::relativetime::options::Numeric;
+use icu_experimental::relativetime::provider::*;
 use icu_experimental::relativetime::{RelativeTimeFormatter as F, RelativeTimeFormatterOptions};
+use icu_provider::prelude::*;
 use std::sync::OnceLock;
 
 type Ctor = fn(
+    &Data,
     icu_experimental::relativetime::RelativeTimeFormatterPreferences,
     RelativeTimeFormatterOptions,
-) -> Result<F, icu_provider::DataError>;
+) -> Result<F, DataError>;
+
+/// The compiled data, except that plural rules are read for `plurals` (see plural::data_locale):
+/// the formatter would otherwise take them from the pattern's locale, root's for sr-Latn.
+struct Data {
+    plurals: DataLocale,
+}
+
+impl DataProvider<PluralsCardinalV1> for Data {
+    fn load(&self, req: DataRequest) -> Result<DataResponse<PluralsCardinalV1>, DataError> {
+        let id = DataIdentifierBorrowed::for_locale(&self.plurals);
+        icu::plurals::provider::Baked.load(DataRequest { id, ..req })
+    }
+}
+
+macro_rules! forward {
+    ($baked:path: $($marker:ident),+) => {
+        $(impl DataProvider<$marker> for Data {
+            fn load(&self, req: DataRequest) -> Result<DataResponse<$marker>, DataError> {
+                $baked.load(req)
+            }
+        })+
+    };
+}
+forward!(icu::decimal::provider::Baked: DecimalSymbolsV1, DecimalDigitsV1);
+forward!(icu_experimental::provider::Baked:
+    LongSecondRelativeV1, LongMinuteRelativeV1, LongHourRelativeV1, LongDayRelativeV1,
+    LongWeekRelativeV1, LongMonthRelativeV1, LongQuarterRelativeV1, LongYearRelativeV1,
+    ShortSecondRelativeV1, ShortMinuteRelativeV1, ShortHourRelativeV1, ShortDayRelativeV1,
+    ShortWeekRelativeV1, ShortMonthRelativeV1, ShortQuarterRelativeV1, ShortYearRelativeV1,
+    NarrowSecondRelativeV1, NarrowMinuteRelativeV1, NarrowHourRelativeV1, NarrowDayRelativeV1,
+    NarrowWeekRelativeV1, NarrowMonthRelativeV1, NarrowQuarterRelativeV1, NarrowYearRelativeV1);
 
 // [style][unit], units in spec order: second minute hour day week month quarter year.
 const CTORS: [[Ctor; 8]; 3] = [
     [
-        F::try_new_long_second,
-        F::try_new_long_minute,
-        F::try_new_long_hour,
-        F::try_new_long_day,
-        F::try_new_long_week,
-        F::try_new_long_month,
-        F::try_new_long_quarter,
-        F::try_new_long_year,
+        F::try_new_long_second_unstable,
+        F::try_new_long_minute_unstable,
+        F::try_new_long_hour_unstable,
+        F::try_new_long_day_unstable,
+        F::try_new_long_week_unstable,
+        F::try_new_long_month_unstable,
+        F::try_new_long_quarter_unstable,
+        F::try_new_long_year_unstable,
     ],
     [
-        F::try_new_short_second,
-        F::try_new_short_minute,
-        F::try_new_short_hour,
-        F::try_new_short_day,
-        F::try_new_short_week,
-        F::try_new_short_month,
-        F::try_new_short_quarter,
-        F::try_new_short_year,
+        F::try_new_short_second_unstable,
+        F::try_new_short_minute_unstable,
+        F::try_new_short_hour_unstable,
+        F::try_new_short_day_unstable,
+        F::try_new_short_week_unstable,
+        F::try_new_short_month_unstable,
+        F::try_new_short_quarter_unstable,
+        F::try_new_short_year_unstable,
     ],
     [
-        F::try_new_narrow_second,
-        F::try_new_narrow_minute,
-        F::try_new_narrow_hour,
-        F::try_new_narrow_day,
-        F::try_new_narrow_week,
-        F::try_new_narrow_month,
-        F::try_new_narrow_quarter,
-        F::try_new_narrow_year,
+        F::try_new_narrow_second_unstable,
+        F::try_new_narrow_minute_unstable,
+        F::try_new_narrow_hour_unstable,
+        F::try_new_narrow_day_unstable,
+        F::try_new_narrow_week_unstable,
+        F::try_new_narrow_month_unstable,
+        F::try_new_narrow_quarter_unstable,
+        F::try_new_narrow_year_unstable,
     ],
 ];
 
 pub struct RelativeTimeFormat {
     locale: Locale,
+    data: Data,
     style: usize,
     auto: bool,
     // [numeric always, numeric auto] × unit
@@ -82,8 +119,12 @@ impl RelativeTimeFormat {
             }
             _ => None,
         };
+        let data = Data {
+            plurals: DataLocale::from(&crate::plural::data_locale(&locale, false)),
+        };
         Some(Self {
             root_symbols,
+            data,
             locale,
             style: (style as usize).min(2),
             auto,
@@ -97,7 +138,7 @@ impl RelativeTimeFormat {
             .get_or_init(|| {
                 let mut o = RelativeTimeFormatterOptions::default();
                 o.numeric = if auto { Numeric::Auto } else { Numeric::Always };
-                CTORS[self.style][unit]((&self.locale).into(), o).ok()
+                CTORS[self.style][unit](&self.data, (&self.locale).into(), o).ok()
             })
             .as_ref()
     }
@@ -212,6 +253,13 @@ mod tests {
                 .collect::<String>()
         );
         text
+    }
+
+    #[test]
+    fn plural_rules_follow_the_language_not_the_script() {
+        // Latin patterns, Serbian rules: root's would pick "other" for both.
+        assert_eq!(fmt("sr-Latn", 0, false, 21.0, 3), "za 21 dan");
+        assert_eq!(fmt("sr-Latn", 0, false, 1.0, 0), "za 1 sekundu");
     }
 
     #[test]

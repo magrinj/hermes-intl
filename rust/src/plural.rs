@@ -51,10 +51,41 @@ pub const ALL: [PluralCategory; 6] = [
     PluralCategory::Other,
 ];
 
+/// The locale to read plural rules with. CLDR keys them by language and region, but ICU4X falls
+/// back from a locale whose parent is root (sr-Latn, bs-Cyrl) to root's rules, which only have
+/// "other". So the script and variants go, and the region stays only if it has rules of its own.
+/// The approach comes from Tzvetan Mikov's Intl plugin for Hermes.
+pub fn data_locale(loc: &Locale, ordinal: bool) -> Locale {
+    use icu::plurals::provider::{Baked, PluralsCardinalV1, PluralsOrdinalV1};
+    use icu_provider::prelude::*;
+    let mut id = icu::locale::LanguageIdentifier::from((loc.id.language, None, loc.id.region));
+    if id.region.is_some() {
+        let data = DataLocale::from(&id);
+        let mut metadata = DataRequestMetadata::default();
+        metadata.silent = true;
+        let req = DataRequest {
+            id: DataIdentifierBorrowed::for_locale(&data),
+            metadata,
+        };
+        // A response with no fallback locale means the region has its own rules.
+        let exact = if ordinal {
+            DataProvider::<PluralsOrdinalV1>::load(&Baked, req)
+                .is_ok_and(|r| r.metadata.locale.is_none())
+        } else {
+            DataProvider::<PluralsCardinalV1>::load(&Baked, req)
+                .is_ok_and(|r| r.metadata.locale.is_none())
+        };
+        if !exact {
+            id.region = None;
+        }
+    }
+    id.into()
+}
+
 impl Rules {
     pub fn new(locale: &str, o: Options) -> Option<Self> {
         let loc: Locale = locale.parse().ok()?;
-        let prefs = (&loc).into();
+        let prefs = (&data_locale(&loc, o.ordinal)).into();
         let rules = if o.ordinal {
             PluralRulesWithRanges::try_new_ordinal(prefs)
         } else {
@@ -389,6 +420,17 @@ mod tests {
         .unwrap();
         assert_eq!(en.select(from_f64(1.0)), PluralCategory::Other); // "1.0"
         assert_eq!(Rules::new("ar", o()).unwrap().categories(), 0b111111);
+    }
+
+    #[test]
+    fn locales_with_a_script_keep_their_language_rules() {
+        let select = |locale, n| Rules::new(locale, o()).unwrap().select(from_f64(n));
+        assert_eq!(select("sr-Latn", 2.0), PluralCategory::Few);
+        assert_eq!(select("bs-Cyrl", 3.0), PluralCategory::Few);
+        assert_eq!(Rules::new("sr-Latn", o()).unwrap().categories(), 0b101010); // one few other
+                                                                                // A region with rules of its own keeps them: pt-PT, not pt.
+        assert_eq!(select("pt-PT", 0.0), PluralCategory::Other);
+        assert_eq!(select("pt", 0.0), PluralCategory::One);
     }
 
     #[test]
