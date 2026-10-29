@@ -179,6 +179,9 @@ See [CONTRIBUTING.md](.github/CONTRIBUTING.md).
   locale data.
 - [test262](https://github.com/tc39/test262), the TC39 suite the implementation is checked against.
 - [FormatJS](https://formatjs.github.io/), the polyfills used as the baseline in the benchmarks.
+- Tzvetan Mikov's [Intl plugin for Hermes](https://github.com/tmikov/hermes/tree/hermes-intl):
+  comparing with it showed that locales with a script (sr-Latn, bs-Cyrl) fell back to root's
+  plural rules, and how to read the right ones.
 
 hermes-intl is an independent project, not affiliated with or endorsed by Meta or the Hermes team.
 
