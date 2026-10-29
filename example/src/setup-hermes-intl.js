@@ -2,3 +2,6 @@
 global.__demoStart = performance.now();
 require('hermes-intl');
 global.__demo = { impl: 'hermes-intl', subtitle: 'native Intl (ICU4X)', color: '#0a7d32', setupMs: performance.now() - global.__demoStart };
+
+// For the Worklets screen (src/Worklets.js).
+require('hermes-intl').installOnWorkletRuntime();

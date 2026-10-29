@@ -7,6 +7,7 @@ import i18n, { LANGUAGES } from './i18n';
 import { makeFeed } from './data';
 import { formatIntlOnly, formatItem } from './format';
 import { runBench } from './bench';
+import Worklets from './Worklets';
 
 const FEED = makeFeed(2000, Date.now());
 const SCREEN_ROWS = 20;
@@ -112,6 +113,7 @@ function Demo() {
   const [legend, setLegend] = useState(true);
   const [metrics, setMetrics] = useState({});
   const [screen, setScreen] = useState(null);
+  const [worklets, setWorklets] = useState(false);
   const [query, setQuery] = useState('');
   const [benchRows, setBenchRows] = useState(undefined); // undefined: closed, null: running, rows: done
   const keys = useRef({ last: 0, worst: 0 });
@@ -257,6 +259,11 @@ function Demo() {
         <Pressable onPress={openBench} style={styles.button}>
           <Text style={styles.buttonText}>Bench</Text>
         </Pressable>
+        {demo.impl === 'hermes-intl' && (
+          <Pressable onPress={() => setWorklets(true)} style={styles.button}>
+            <Text style={styles.buttonText}>Worklets</Text>
+          </Pressable>
+        )}
       </View>
       <View style={styles.actions}>
         <Action label="Intl only × 10,000" value={show(metrics.intl)} onPress={stressIntl} />
@@ -310,6 +317,7 @@ function Demo() {
           <Screen offset={screen.offset} locale={locale} now={now} onClose={() => setScreen(null)} />
         )}
       </View>
+      {worklets && <Worklets locale={locale} color={demo.color} onClose={() => setWorklets(false)} />}
     </SafeAreaView>
   );
 }
