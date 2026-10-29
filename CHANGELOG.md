@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.2.0](https://github.com/magrinj/hermes-intl/compare/v0.1.3...v0.2.0) (2026-10-29)
+
+
+### Features
+
+* **example:** worklets demo screen ([a8d5a7e](https://github.com/magrinj/hermes-intl/commit/a8d5a7eb0617a11990d80bf091d02e3018b4e25d))
+* install on react-native-worklets runtimes ([cd73c77](https://github.com/magrinj/hermes-intl/commit/cd73c77cc562e46fcf057b2bb6a33adf156988ad))
+
 ## [0.1.3](https://github.com/magrinj/hermes-intl/compare/v0.1.2...v0.1.3) (2026-10-29)
 
 
