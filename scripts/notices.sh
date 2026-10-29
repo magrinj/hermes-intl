@@ -3,9 +3,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 BIN=${CARGO_HOME:-$HOME/.cargo}/bin
-RUSTC=$("$BIN/rustup" which rustc)
+RUSTUP=$(command -v rustup || echo "$BIN/rustup") # GitHub's macOS images keep it off ~/.cargo/bin
+RUSTC=$("$RUSTUP" which rustc)
 export RUSTC
-CARGO=$("$BIN/rustup" which cargo)
+CARGO=$("$RUSTUP" which cargo)
 REG=$(ls -d "${CARGO_HOME:-$HOME/.cargo}"/registry/src/*/ | head -1)
 CRATES=$(cd rust && $CARGO tree -e normal,no-proc-macro --prefix none --format "{p}|{l}" --target aarch64-linux-android \
   | sed 's/ (\*)//' | grep -v '^hermes_intl ' | sort -u)

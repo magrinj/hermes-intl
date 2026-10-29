@@ -8,9 +8,10 @@ cd "$(dirname "$0")/.."
 # to test a custom locale set; its data is generated with icu4x-datagen.
 # rustup's toolchain, not whichever rustc comes first on PATH (e.g. Homebrew's).
 BIN=${CARGO_HOME:-$HOME/.cargo}/bin
-RUSTC=$("$BIN/rustup" which rustc) RUSTDOC=$("$BIN/rustup" which rustdoc)
+RUSTUP=$(command -v rustup || echo "$BIN/rustup") # GitHub's macOS images keep it off ~/.cargo/bin
+RUSTC=$("$RUSTUP" which rustc) RUSTDOC=$("$RUSTUP" which rustdoc)
 export RUSTC RUSTDOC
-CARGO=$("$BIN/rustup" which cargo)
+CARGO=$("$RUSTUP" which cargo)
 if [ -n "${HERMES_INTL_LOCALES:-}" ]; then
   export ICU4X_DATA_DIR=$PWD/rust/target/data-test
   "$BIN/icu4x-datagen" --markers all --locales $HERMES_INTL_LOCALES --format baked --out "$ICU4X_DATA_DIR" --overwrite >/dev/null 2>&1

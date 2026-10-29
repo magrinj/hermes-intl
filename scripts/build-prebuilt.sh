@@ -6,9 +6,10 @@ cd "$(dirname "$0")/.."
 
 # rustup's toolchain, not whichever rustc comes first on PATH (e.g. Homebrew's).
 BIN=${CARGO_HOME:-$HOME/.cargo}/bin
-RUSTC=$("$BIN/rustup" which rustc)
+RUSTUP=$(command -v rustup || echo "$BIN/rustup") # GitHub's macOS images keep it off ~/.cargo/bin
+RUSTC=$("$RUSTUP" which rustc)
 export RUSTC
-CARGO=$("$BIN/rustup" which cargo)
+CARGO=$("$RUSTUP" which cargo)
 NDK_VERSION=${NDK_VERSION:-27.1.12297006}
 NDK=${ANDROID_NDK_HOME:-${ANDROID_HOME:-$HOME/Library/Android/sdk}/ndk/$NDK_VERSION}
 [ -d "$NDK" ] || { echo "Android NDK not found at $NDK (set ANDROID_NDK_HOME)" >&2; exit 1; }
