@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/magrinj/hermes-intl/compare/v0.1.2...v0.1.3) (2026-10-29)
+
+
+### Bug Fixes
+
+* keep the script a region implies when resolving a locale ([0a1cfd0](https://github.com/magrinj/hermes-intl/commit/0a1cfd0a7fca2c4a31ffd7d1419cb391f2ea0ff8))
+* useffect seal ([7cd12b6](https://github.com/magrinj/hermes-intl/commit/7cd12b68fb6f707192426065cec1dba4ced68d5a))
+
 ## [0.1.2](https://github.com/magrinj/hermes-intl/compare/v0.1.1...v0.1.2) (2026-10-06)
 
 
