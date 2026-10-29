@@ -621,18 +621,20 @@ module.exports = function (native, global) {
   var arrayIteratorPrototype = getPrototypeOf([][iteratorSym]());
   var arrayIteratorNext = arrayIteratorPrototype.next;
 
-  // StringListFromIterable. An array with untouched iteration is read directly: native reads it
-  // again, so only getter-defined elements could tell. for-of closes the iterator on throw.
+  // StringListFromIterable. An array with untouched iteration is read by index, skipping the
+  // iterator, but copied: native must get the strings checked here, not a getter's next value.
+  // for-of closes the iterator on throw.
   function stringList(iterable) {
     if (iterable === undefined) return [];
+    var list = [];
     if (isArray(iterable) && iterable[iteratorSym] === arrayValues && arrayIteratorPrototype.next === arrayIteratorNext) {
       for (var i = 0; i < iterable.length; i++) {
         var item = iterable[i];
         if (typeof item !== 'string') throw new TypeError('Iterable yielded ' + item + ' which is not a string');
+        append(list, item);
       }
-      return iterable;
+      return list;
     }
-    var list = [];
     for (var v of iterable) {
       if (typeof v !== 'string') throw new TypeError('Iterable yielded ' + v + ' which is not a string');
       append(list, v);
