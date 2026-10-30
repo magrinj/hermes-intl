@@ -13,6 +13,8 @@ icu_provider = { version = "2.3", default-features = false, features = ["sync"] 
 fixed_decimal = { version = "0.7", features = ["ryu"] }
 icu_experimental = { version = "0.6", default-features = false, features = ["compiled_data"] }
 writeable = "0.6"
+tinystr = "0.8"
+zerovec = "0.11"
 
 [build-dependencies]
 icu_locale_core = { version = "2.3", features = ["alloc"] }

@@ -38,7 +38,8 @@
     "icu4x",
     "pluralrules",
     "relativetimeformat",
-    "listformat"
+    "listformat",
+    "numberformat"
   ],
   "author": "Jérémy Magrin <contact@magrin.fr> (magrinj)",
   "license": "MIT",

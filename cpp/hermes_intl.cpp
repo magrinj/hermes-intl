@@ -21,6 +21,9 @@ struct Owned : NativeState {
 using PluralRulesState = Owned<HiPluralRules, hi_pr_free>;
 using RelativeTimeFormatState = Owned<HiRelativeTimeFormat, hi_rtf_free>;
 using ListFormatState = Owned<HiListFormat, hi_lf_free>;
+#ifdef __APPLE__
+using NumberFormatState = Owned<HiNumberFormat, hi_nf_free>;
+#endif
 
 template <class S>
 Value handleFor(Runtime &rt, decltype(S::ptr) p, const char *what) {
@@ -84,6 +87,12 @@ void def(Runtime &, Native &o, const char *name, unsigned length, HostFunctionTy
 
 uint8_t u8(const Value &v) { return static_cast<uint8_t>(v.getNumber()); }
 
+// The 11 digit options after the locale, as the bootstrap passes them to prNew and nfNew.
+HiPluralOptions pluralOptions(const Value *a) {
+  return {a[0].getBool(), u8(a[1]), a[2].getBool(), u8(a[3]), u8(a[4]), u8(a[5]), u8(a[6]),
+          u8(a[7]),       static_cast<uint16_t>(a[8].getNumber()), u8(a[9]), a[10].getBool()};
+}
+
 } // namespace
 
 Object createNative(Runtime &rt, const std::string &hostLocale) {
@@ -102,9 +111,7 @@ Object createNative(Runtime &rt, const std::string &hostLocale) {
 
   def(rt, native, "prNew", 12, [](Runtime &rt, const Value &, const Value *a, size_t) {
     std::string locale = a[0].getString(rt).utf8(rt);
-    HiPluralOptions o{
-        a[1].getBool(), u8(a[2]), a[3].getBool(), u8(a[4]), u8(a[5]), u8(a[6]), u8(a[7]),
-        u8(a[8]),       static_cast<uint16_t>(a[9].getNumber()), u8(a[10]), a[11].getBool()};
+    HiPluralOptions o = pluralOptions(a + 1);
     return handleFor<PluralRulesState>(rt, hi_pr_new(locale.data(), locale.size(), &o), "Intl.PluralRules");
   });
   def(rt, native, "prCategories", 1, [](Runtime &rt, const Value &, const Value *a, size_t) {
@@ -175,6 +182,46 @@ Object createNative(Runtime &rt, const std::string &hostLocale) {
     }
     return take(rt, hi_lf_format(unwrap<ListFormatState>(rt, a[0]), slices.data(), n, a[2].getBool()));
   });
+
+#ifdef __APPLE__
+  // Intl.NumberFormat: the digit options as for prNew, then style, currency, currencyDisplay,
+  // accounting, unit, unitDisplay, useGrouping, signDisplay, minimumIntegerDigits.
+  def(rt, native, "nfNew", 21, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string locale = a[0].getString(rt).utf8(rt);
+    HiNumberOptions o{};
+    o.digits = pluralOptions(a + 1);
+    o.style = u8(a[12]);
+    std::string currency = a[13].getString(rt).utf8(rt);
+    for (size_t i = 0; i < 3 && i < currency.size(); i++) o.currency[i] = currency[i];
+    o.currency_display = u8(a[14]);
+    o.accounting = a[15].getBool();
+    std::string unit = a[16].getString(rt).utf8(rt);
+    o.unit_display = u8(a[17]);
+    o.grouping = u8(a[18]);
+    o.sign_display = u8(a[19]);
+    o.min_integer = u8(a[20]);
+    return handleFor<NumberFormatState>(
+        rt, hi_nf_new(locale.data(), locale.size(), &o, unit.data(), unit.size()), "Intl.NumberFormat");
+  });
+  def(rt, native, "nfFormat", 3, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string s;
+    HiNumber x = toNumber(rt, a[1], s);
+    Value v = take(rt, hi_nf_format(unwrap<NumberFormatState>(rt, a[0]), &x, a[2].getBool()));
+    if (v.isUndefined()) throw JSError(rt, "Intl.NumberFormat: formatting failed");
+    return v;
+  });
+  def(rt, native, "nfFormatRange", 4, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string s1, s2;
+    HiNumber x = toNumber(rt, a[1], s1), y = toNumber(rt, a[2], s2);
+    Value v = take(rt, hi_nf_format_range(unwrap<NumberFormatState>(rt, a[0]), &x, &y, a[3].getBool()));
+    if (v.isUndefined()) throw JSError(rt, "Intl.NumberFormat: formatting failed");
+    return v;
+  });
+  def(rt, native, "currencyDigits", 1, [](Runtime &rt, const Value &, const Value *a, size_t) {
+    std::string code = a[0].getString(rt).utf8(rt);
+    return Value(static_cast<int>(hi_currency_digits(code.data(), code.size())));
+  });
+#endif
 
   return Object::createFromHostObject(rt, host);
 }

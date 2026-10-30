@@ -14,8 +14,8 @@
 
 Native `Intl.PluralRules`, `Intl.RelativeTimeFormat`, `Intl.ListFormat` and `Intl.Locale` for
 React Native's [Hermes](https://github.com/facebook/hermes) engine, backed by
-[ICU4X](https://github.com/unicode-org/icu4x). A drop-in replacement for the
-[FormatJS](https://formatjs.github.io/) polyfills.
+[ICU4X](https://github.com/unicode-org/icu4x), and on iOS a full `Intl.NumberFormat` in place of
+Hermes's own. A drop-in replacement for the [FormatJS](https://formatjs.github.io/) polyfills.
 
 ## Why this library?
 
@@ -23,12 +23,12 @@ React Native's [Hermes](https://github.com/facebook/hermes) engine, backed by
   the FormatJS polyfills.
   Screens that format dates and counts open about twice as fast, and the worst frame of a fast
   scroll is half as long.
-- **Correct, and the same everywhere.** It passes test262 for these APIs (2 known failures) and gives
+- **Correct, and the same everywhere.** It passes test262 for these APIs (1 known failure) and gives
   byte-identical output on iOS and Android. FormatJS output depends on the platform, and its
   plurals for decimals are wrong in some languages.
 - **Drop-in.** It installs the standard `Intl` constructors, so code and libraries that use them
   (i18next, react-intl, Luxon) pick it up without changes. The app ships ~400 KB less JavaScript
-  and 1.0 to 1.7 MB more native code per ABI.
+  and 1.0 to 1.7 MB more native code per Android ABI, 3.6 MB on iOS.
 
 ## Benchmarks
 
@@ -112,12 +112,12 @@ installOnWorkletRuntime(runtime); // one from createWorkletRuntime
 | `Intl.ListFormat` | conjunction / disjunction / unit, long / short / narrow, `formatToParts` |
 | `Intl.Locale` | all getters, `maximize`, `minimize`, and the Locale Info methods (`getWeekInfo`, `getTextInfo`, `getCalendars`, `getHourCycles`, `getNumberingSystems`, `getTimeZones`, `getCollations`) |
 | `Intl.getCanonicalLocales` | replaced so it accepts `Intl.Locale` objects |
-| `Intl.NumberFormat`, `DateTimeFormat`, `Collator`, `toLocaleString`, `localeCompare` | Hermes's own, wrapped so they accept an `Intl.Locale` object as the locale |
+| `Intl.NumberFormat`, `Number` and `BigInt` `toLocaleString` | on iOS, replaced: Hermes's own there has no `formatToParts` and ignores compact notation, `signDisplay`, `roundingMode` and `-u-nu-`. Every option, `formatToParts`, `formatRange`, `formatRangeToParts`. On Android, Hermes's own, wrapped so it accepts an `Intl.Locale` object |
+| `Intl.DateTimeFormat`, `Collator`, `Date` `toLocale*String`, `localeCompare` | Hermes's own, wrapped so they accept an `Intl.Locale` object as the locale |
 
 Each constructor is installed only if Hermes lacks it. On other engines (JSC, web) the import does
-nothing. Conformance: 838 of 842 test262 `intl402` runs pass for these APIs (each test runs in
-sloppy and strict mode). The 4 others are 2 known failures: a Hermes `NumberFormat` bug and a locale
-outside the shipped set.
+nothing. Conformance: 1,376 of 1,378 test262 `intl402` runs pass for these APIs (each test runs in
+sloppy and strict mode). The 2 others are 1 known failure: a locale outside the shipped set.
 
 ## Locales and size
 
@@ -128,18 +128,22 @@ The binaries include ICU4X's recommended set of 514 locales
 | Platform | Native size added |
 | --- | --- |
 | Android | 1.7 MB (arm64-v8a), 1.0 MB (armeabi-v7a), 1.7 MB (x86_64), 1.2 MB (x86) |
-| iOS | 1.2 MB (arm64 device) |
+| iOS | 3.6 MB (arm64 device), of which 2.3 MB for `Intl.NumberFormat` (currency names, compact and unit patterns) |
 
 To ship only your app's locales (about 0.6 MB per ABI for 5 locales), build the binaries yourself:
 see [CONTRIBUTING.md](.github/CONTRIBUTING.md#custom-locale-set).
 
 ## Not included (yet)
 
-- `Intl.NumberFormat` / `DateTimeFormat` replacements: Hermes's own are kept.
-  Note that Hermes's `NumberFormat` lacks `formatToParts` on iOS and ignores `-u-nu-` there.
+- `Intl.DateTimeFormat` and `Collator` replacements: Hermes's own are kept.
 - `DisplayNames`, `Segmenter`, `DurationFormat`, `supportedValuesOf`.
 
 ## Differences from V8 worth knowing
+
+- On iOS, a compact currency amount puts the locale's currency pattern around the compact number
+  ("1,2 M €" in Spanish where V8 has "1,2 M€"): CLDR's compact currency patterns are not bundled.
+- On iOS, English in continental Europe (en-150, en-DE, en-BE...) formats currencies with its CLDR
+  pattern ("1.234,50 €" in en-DE), where V8's ICU uses English's ("€1,234.50").
 
 - `new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(0.9999, "day")` is "in 1 day"
   (the spec: the value is not exactly 1); V8 rounds first and says "tomorrow".

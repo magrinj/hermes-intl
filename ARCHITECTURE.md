@@ -126,10 +126,20 @@ Libraries do not know about hermes-intl. They call or feature-detect the standar
 
 The [example app](example/) exercises i18next; the others use the same constructors.
 
+## Intl.NumberFormat on iOS
+
+Hermes's `NumberFormat` on Apple platforms wraps `NSNumberFormatter`: no `formatToParts`, and
+compact notation, `signDisplay`, `roundingMode` and `-u-nu-` are ignored. Where `formatToParts`
+is missing, the shell installs its own `NumberFormat` (and `Number`/`BigInt` `toLocaleString`) on
+[rust/src/number.rs](rust/src/number.rs): the rounding of `PluralRules`, ICU4X's decimal, compact,
+percent and currency data, and CLDR unit patterns from `scripts/number-data.mjs`. It is compiled
+for Apple targets only, so Android binaries keep their size and Hermes's own, ICU-based
+`NumberFormat`.
+
 ## What it does not touch
 
-`Intl.NumberFormat`, `Intl.DateTimeFormat` and `Intl.Collator` stay Hermes's own, and so do
-`toLocaleString`, `localeCompare` and `Date`. Hermes reads a lone `Intl.Locale` object as an empty
+`Intl.DateTimeFormat` and `Intl.Collator` stay Hermes's own, and so do `localeCompare`, `Date`
+and, on Android, `Intl.NumberFormat` and `toLocaleString`. Hermes reads a lone `Intl.Locale` object as an empty
 list, so the shell wraps them to pass it as its tag, and gives instances of a subclass the
 subclass's prototype. Lists go through untouched (Hermes reads a Locale in one through its
 `toString`); names and everything else stay Hermes's. There is no network access, no storage and

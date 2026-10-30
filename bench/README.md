@@ -178,19 +178,17 @@ at `7ab7fafa` (`scripts/test262.sh`, run in CI). Each test runs in sloppy and st
 | Suite | Pass | Expected failures | Skipped |
 | --- | --- | --- | --- |
 | `intl402/PluralRules` | 102 | 2 | 1 |
-| `intl402/RelativeTimeFormat` | 156 | 2 | 1 |
+| `intl402/RelativeTimeFormat` | 158 | 0 | 1 |
 | `intl402/ListFormat` | 160 | 0 | 1 |
 | `intl402/Locale` (incl. Locale Info) | 344 | 0 | 1 |
 | `intl402/Intl/getCanonicalLocales` | 76 | 0 | 0 |
-| **Total** | **838** runs | **4** runs | **4** files |
+| `intl402/NumberFormat`, `Number`, `BigInt` (iOS's NumberFormat) | 536 | 0 | 1 |
+| **Total** | **1,376** runs | **2** runs | **5** files |
 
 - Skipped: `proto-from-ctor-realm.js` in each folder needs `$262.createRealm`.
-- Expected failures (`host/test262-expected-failures.txt`), each in both modes:
-  - `RelativeTimeFormat/prototype/format/en-us-numbering-systems.js` compares our output with
-    Hermes's own `Intl.NumberFormat("en-US-u-nu-arab")`, which ignores `-u-nu-` on Apple platforms.
-    Our output matches V8.
-  - `PluralRules/prototype/resolvedOptions/plural-categories-order.js` checks "gv" (Manx), which is
-    not in the recommended locale set.
+- Expected failure (`host/test262-expected-failures.txt`), in both modes:
+  `PluralRules/prototype/resolvedOptions/plural-categories-order.js` checks "gv" (Manx), which is
+  not in the recommended locale set.
 
 ## Correctness against V8
 
@@ -230,7 +228,8 @@ Node 22 (ICU 77, CLDR 47) on the same corpus:
   React Native's Babel preset.
 - ICU4X gaps filled in the package: no RelativeTimeFormat C binding, number parts flattened in
   relative-time output, 5 to 8 letter language subtags, `-u-` value aliases, "und" in likely
-  subtags, root symbols for an explicit `-u-nu-arab`, only the default calendar per region, no
+  subtags, root symbols for an explicit `-u-nu-arab`, digits of the numbering systems no shipped
+  locale defaults to, a currency symbol equal to its code replaced by an ancestor's, only the default calendar per region, no
   hour-cycle data.
 
 ## Not measured yet
