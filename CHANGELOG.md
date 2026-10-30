@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/magrinj/hermes-intl/compare/v0.2.0...v0.2.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* copy the strings ListFormat checked before formatting them ([33dc706](https://github.com/magrinj/hermes-intl/commit/33dc7067623482fa6d6136e7376a92570debd9fa))
+* read plural rules by language for locales with a script ([13bb1ce](https://github.com/magrinj/hermes-intl/commit/13bb1ceeba9ed6067998f6f08b197478d9274af0))
+
 # [0.2.0](https://github.com/magrinj/hermes-intl/compare/v0.1.3...v0.2.0) (2026-10-29)
 
 
