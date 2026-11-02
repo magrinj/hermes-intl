@@ -1,5 +1,12 @@
 # Changelog
 
+# [0.3.0](https://github.com/magrinj/hermes-intl/compare/v0.2.1...v0.3.0) (2026-11-02)
+
+
+### Features
+
+* replace Intl.NumberFormat on iOS ([f6a2771](https://github.com/magrinj/hermes-intl/commit/f6a2771542fe8e4bb02fb3cbc4913a9bcf592143))
+
 ## [0.2.1](https://github.com/magrinj/hermes-intl/compare/v0.2.0...v0.2.1) (2026-10-30)
 
 
