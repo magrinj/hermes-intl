@@ -160,6 +160,9 @@ module.exports = function (native, global) {
     if (s === '') return 0;
     var m = execDecimal(s);
     if (m !== null && (m[2] !== '' || (m[3] !== undefined && m[3] !== ''))) {
+      // ToIntlMathematicalValue saturates strings outside Number's range.
+      var rounded = +s;
+      if (rounded === 0 || !isFinite_(rounded)) return rounded;
       return (m[1] === '-' ? '-' : '') + (m[2] || '0') + (m[3] ? '.' + m[3] : '') + (m[4] ? 'e' + m[4] : '');
     }
     return +s; // Infinity, 0x…, 0b…, 0o…, or NaN
