@@ -654,14 +654,22 @@ module.exports = function (native, global) {
     return list;
   }
 
+  // Native gets the strings as UTF-8, where a lone surrogate turns into U+FFFD: put the elements back.
+  function listParts(s, list) {
+    var parts = unpackParts(lfFormat(s.handle, list, true));
+    for (var i = 0, k = 0; i < parts.length; i++) if (parts[i].type === 'element') parts[i].value = list[k++];
+    return parts;
+  }
+
   var lfMethods = {
     format(list) {
-      var s = lfOf(this, 'format');
-      return lfFormat(s.handle, stringList(list), false);
+      var parts = listParts(lfOf(this, 'format'), stringList(list));
+      var out = '';
+      for (var i = 0; i < parts.length; i++) out += parts[i].value;
+      return out;
     },
     formatToParts(list) {
-      var s = lfOf(this, 'formatToParts');
-      return unpackParts(lfFormat(s.handle, stringList(list), true));
+      return listParts(lfOf(this, 'formatToParts'), stringList(list));
     },
     resolvedOptions() {
       var s = lfOf(this, 'resolvedOptions');
