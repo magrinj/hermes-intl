@@ -76,6 +76,7 @@ cd ../..
 bun run test262               # test262 for the implemented constructors
 scripts/corpus.sh             # correctness corpus; hash must match bench/corpus.hash
 host/build/hi-host host/locale-objects.js   # Hermes's own Intl functions given Intl.Locale objects
+host/build/hi-host host/regressions.js      # outputs checked against Node
 host/build/hi-host host/duration-format-cases.js host/duration-format.js   # see host/duration-format-golden.mjs
 ```
 
