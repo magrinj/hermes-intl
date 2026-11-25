@@ -1,6 +1,6 @@
 {
   "name": "hermes-intl",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Native Intl.PluralRules, RelativeTimeFormat, ListFormat, Segmenter, DisplayNames, DurationFormat and Locale for Hermes, backed by ICU4X",
   "main": "src/index.js",
   "react-native": "src/index.js",

@@ -1,5 +1,25 @@
 # Changelog
 
+# [0.4.0](https://github.com/magrinj/hermes-intl/compare/v0.3.0...v0.4.0) (2026-11-25)
+
+
+### Bug Fixes
+
+* format negative thousands with the plural form in fr and it compact long ([f6d7e3c](https://github.com/magrinj/hermes-intl/commit/f6d7e3c6f364817e27f1969acbc2b5d6451259ec))
+* format the short percent unit with the percent pattern ([098ca98](https://github.com/magrinj/hermes-intl/commit/098ca98613399f9936fe37e2dc1670fe22a70d5c))
+* keep lone surrogates in ListFormat elements ([ab8f982](https://github.com/magrinj/hermes-intl/commit/ab8f982d37012240b62760869c8aa2542e93cf26))
+* keep the region of locales that spell out their script ([fa40855](https://github.com/magrinj/hermes-intl/commit/fa408550c8dd21a663956051f922a58fa1da12ca))
+* saturate decimal strings at Number range boundaries ([aac730f](https://github.com/magrinj/hermes-intl/commit/aac730fb11b84e62c254a90764f72ed557038484))
+* use the short compact patterns for currencies ([7ca6506](https://github.com/magrinj/hermes-intl/commit/7ca65068e2dfc9320d0e46b55fbb92c81bad9bea))
+
+
+### Features
+
+* add Intl.DisplayNames ([358eddc](https://github.com/magrinj/hermes-intl/commit/358eddce6a5cb30d7a5d83a95650f1454cc219af))
+* add Intl.DurationFormat ([5b55536](https://github.com/magrinj/hermes-intl/commit/5b5553643999ab1318c63934da630680261a6866))
+* add Intl.Segmenter ([d70bd63](https://github.com/magrinj/hermes-intl/commit/d70bd63849bcaf048eab5cb411e1e05bad11daab))
+* add Intl.supportedValuesOf ([6af541b](https://github.com/magrinj/hermes-intl/commit/6af541b33b51915a1deeacc8a43498c4be07351f))
+
 # [0.3.0](https://github.com/magrinj/hermes-intl/compare/v0.2.1...v0.3.0) (2026-11-02)
 
 
