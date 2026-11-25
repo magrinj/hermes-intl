@@ -787,7 +787,8 @@ module.exports = function (native, global) {
       r.dataLocale,
       false,
       indexOf(NOTATIONS, s.notation),
-      compactDisplay === 'long',
+      // CLDR has compact currency patterns only in short form: ICU uses them unless the name is spelled.
+      compactDisplay === 'long' && (s.style !== 'currency' || currencyDisplay === 'name'),
       s.minimumFractionDigits === undefined ? 0 : s.minimumFractionDigits,
       s.maximumFractionDigits === undefined ? 3 : s.maximumFractionDigits,
       s.minimumSignificantDigits === undefined ? 1 : s.minimumSignificantDigits,
