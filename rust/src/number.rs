@@ -655,8 +655,15 @@ impl NumberFormat {
                     3 => {
                         // The compact pattern's text around the number, as this formatter writes it.
                         let compact = self.rules.compact()?;
-                        let written = compact.format_with_exponent(&abs, exp.max(0) as u8).ok()?;
-                        let segs = parts::segments(&written);
+                        let exp8 = exp.max(0) as u8;
+                        let mut segs =
+                            parts::segments(&compact.format_with_exponent(&abs, exp8).ok()?);
+                        // CLDR's exact-1 form ("mille") is for +1 only: -1000 is "-1 millier", as in ICU.
+                        if d.sign == Sign::Negative && segs.iter().all(|s| s.0 == parts::LITERAL) {
+                            let mut one = abs.clone();
+                            one.absolute.pad_end(-1);
+                            segs = parts::segments(&compact.format_with_exponent(&one, exp8).ok()?);
+                        }
                         let first = segs
                             .iter()
                             .position(|s| s.0 != parts::LITERAL)
@@ -1270,6 +1277,8 @@ mod tests {
             ..o
         };
         assert_eq!(fmt("sr-Latn", compact_long, "", "1234"), "1,2 hiljade");
+        assert_eq!(fmt("fr", compact_long, "", "1000"), "mille");
+        assert_eq!(fmt("fr", compact_long, "", "-1000"), "-1 millier");
     }
 
     #[test]
