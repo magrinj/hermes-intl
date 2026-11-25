@@ -146,14 +146,23 @@ pub fn lookup(requested: &str) -> Option<String> {
         // A region can imply another script than its language's: zh-TW is written in zh-Hant,
         // not in zh's Hans. Truncating it to "zh" would format Simplified Chinese; keep it, as
         // ICU does: the data lookups fall back to zh-Hant through likely subtags.
+        let mut full =
+            icu::locale::LanguageIdentifier::from((loc.id.language, None, loc.id.region));
+        expander().maximize(&mut full);
         if loc.id.script.is_none() {
-            let mut full = loc.id.clone();
-            expander().maximize(&mut full);
             if let Some(script) = full.script.filter(|s| Some(*s) != max.script) {
                 let scripted = format!("{}-{}", loc.id.language, script);
                 if available().binary_search(&scripted.as_str()).is_ok() {
                     return Some(prefix);
                 }
+            }
+        } else if loc.id.script == full.script
+            && available().binary_search(&prefix.as_str()).is_err()
+        {
+            // zh-Hant-HK is zh-HK's data, as iOS spells Hong Kong's locale.
+            let short = format!("{}-{}", loc.id.language, loc.id.region?);
+            if lookup(&short).is_some_and(|l| l == short) {
+                return Some(prefix);
             }
         }
     }
@@ -347,6 +356,10 @@ mod tests {
         assert_eq!(lookup("zh-TW").as_deref(), Some("zh-TW")); // Traditional, not zh's Simplified
         assert_eq!(lookup("zh-CN").as_deref(), Some("zh-CN"));
         assert_eq!(lookup("zh-FR").as_deref(), Some("zh"));
+        assert_eq!(lookup("zh-Hant-HK").as_deref(), Some("zh-Hant-HK")); // zh-HK's data
+        assert_eq!(lookup("zh-Hant-TW").as_deref(), Some("zh-Hant-TW"));
+        assert_eq!(lookup("sr-Cyrl-BA").as_deref(), Some("sr-Cyrl-BA"));
+        assert_eq!(lookup("sr-Latn-RS").as_deref(), Some("sr-Latn"));
         assert_eq!(minimize("en-Latn-US").as_deref(), Some("en"));
         assert_eq!(direction("ar"), 1);
         assert_eq!(direction("en"), 0);
