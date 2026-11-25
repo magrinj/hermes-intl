@@ -60,6 +60,8 @@ enum Style {
         essentials: DataPayload<PercentEssentialsV1>,
         /// ICU4X's percent sign (the locale's latn one) and the numbering system's.
         sign: (&'static str, &'static str),
+        /// PERCENT_SIGN for the percent style; UNIT for the percent unit, which is not scaled.
+        kind: u8,
     },
     Currency {
         essentials: DataPayload<CurrencyEssentialsV1>,
@@ -494,9 +496,15 @@ impl NumberFormat {
         };
         let plain = formatter(GroupingStrategy::Never, None)?;
         let style = match o.style {
-            1 => Style::Percent {
+            // ICU formats the short and narrow percent unit with the percent style's pattern.
+            1 | 3 if o.style == 1 || (unit == "percent" && o.unit_display != 0) => Style::Percent {
                 essentials: load(DataIdentifierBorrowed::for_locale(&dl))?,
                 sign: (system(row, "latn").map_or("%", |s| s[0]), percent),
+                kind: if o.style == 1 {
+                    parts::PERCENT_SIGN
+                } else {
+                    parts::UNIT
+                },
             },
             2 if o.currency_display == 3 => {
                 let attrs = DataMarkerAttributes::try_from_str(code).ok()?;
@@ -625,7 +633,13 @@ impl NumberFormat {
             }
             Value::Finite(x) => {
                 let mut x = x.clone();
-                if matches!(self.style, Style::Percent { .. }) {
+                if matches!(
+                    self.style,
+                    Style::Percent {
+                        kind: parts::PERCENT_SIGN,
+                        ..
+                    }
+                ) {
                     x.multiply_pow10(2);
                 }
                 let (d, exp) = self.rules.format_with_exponent(&x);
@@ -695,6 +709,7 @@ impl NumberFormat {
             Style::Percent {
                 essentials,
                 sign: (latn, percent),
+                kind,
             } => {
                 let p = essentials.get();
                 let rendered = match sign {
@@ -712,7 +727,7 @@ impl NumberFormat {
                 let rendered = rendered.replace(latn, percent);
                 let s = &self.symbols.get().strings;
                 self.wrap_middle(&mut l, &rendered, |piece, out| match piece {
-                    Piece::Text(t) => affix(t, parts::PERCENT_SIGN, out),
+                    Piece::Text(t) => affix(t, *kind, out),
                     Piece::Arg(_) => {
                         let text = if sign == Some(Sign::Negative) {
                             s.minus_sign_prefix()
@@ -1206,6 +1221,8 @@ mod tests {
             "1 gallon per hour"
         );
         assert_eq!(fmt("en", unit, "percent", "5"), "5%");
+        assert_eq!(fmt("de", unit, "percent", "5"), "5\u{a0}%");
+        assert_eq!(fmt("tr", unit, "percent", "-5"), "-%5");
         assert_eq!(fmt("en-u-nu-arab", o, "", "12"), "١٢");
         assert_eq!(
             fmt("en", NumberOptions { grouping: 3, ..o }, "", "12345"),
