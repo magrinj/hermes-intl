@@ -86,6 +86,7 @@ jobs:
       - run: scripts/test262.sh
       - run: scripts/corpus.sh
       - run: host/build/hi-host host/locale-objects.js
+      - run: host/build/hi-host host/regressions.js
       - run: host/build/hi-host host/duration-format-cases.js host/duration-format.js
 
   prebuilt:
